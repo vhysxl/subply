@@ -1,0 +1,1 @@
+ALTER TABLE "vouchers" ADD COLUMN "price" numeric(10, 2) NOT NULL;

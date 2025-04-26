@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "price_total" NUMERIC(10, 2) NOT NULL;

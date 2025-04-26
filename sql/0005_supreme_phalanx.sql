@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "value" numeric(10, 2) NOT NULL;
