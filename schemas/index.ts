@@ -27,7 +27,7 @@ export const orderStatusEnum = pgEnum('order_status', [
 // Table users
 export const usersTable = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
-  email: varchar('email', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
   name: varchar('name', { length: 100 }).notNull(),
   password: varchar('password', { length: 100 }).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -60,6 +60,10 @@ export const ordersTable = pgTable('orders', {
   priceTotal: numeric('price_total', { precision: 10, scale: 2 }).notNull(),
   value: numeric('value', { precision: 10, scale: 2 }).notNull(),
   type: varchar('type', { length: 50 }).notNull(),
+  name: varchar('name', { length: 100 }).notNull(),
+  email: varchar('email', { length: 100 })
+    .notNull()
+    .references(() => usersTable.email, { onDelete: 'set null' }),
 });
 
 export const paymentsTable = pgTable('payments', {

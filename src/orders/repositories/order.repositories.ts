@@ -11,7 +11,9 @@ export class OrderRepository {
     @Inject(DATABASE_CONNECTION) private db: NeonDatabase<typeof schemas>,
   ) {}
 
-  async createQuickOrder({ userId, value, type }: QuickOrder) {
+  //kinda problematic, need to add delete function for fallback
+
+  async createQuickOrder({ userId, value, type, name, email }: QuickOrder) {
     try {
       const order = await this.db.transaction(async (trx) => {
         const availableVouchers = await trx
@@ -21,7 +23,7 @@ export class OrderRepository {
             and(
               eq(schemas.vouchersTable.status, 'available'),
               eq(schemas.vouchersTable.type, type),
-              eq(schemas.vouchersTable.value, value),
+              eq(schemas.vouchersTable.value, String(value)),
             ),
           )
           .limit(1);
@@ -34,6 +36,8 @@ export class OrderRepository {
           .insert(schemas.ordersTable)
           .values({
             userId: userId,
+            name: name,
+            email: email,
             voucherId: availableVouchers[0].id,
             value: availableVouchers[0].value,
             priceTotal: availableVouchers[0].price,
@@ -54,10 +58,34 @@ export class OrderRepository {
         return newOrder;
       });
 
-      return order;
+      return {
+        ...order,
+        value: Number(order.value),
+        priceTotal: Number(order.priceTotal),
+      };
     } catch (error) {
       console.error('Error creating quick order:', error);
       throw new Error('Error creating quick order');
+    }
+  }
+
+  async fallbackDeleteOrder(orderId: string, voucherId: string) {
+    try {
+      await this.db.transaction(async (trx) => {
+        await trx
+          .delete(schemas.ordersTable)
+          .where(eq(schemas.ordersTable.id, orderId));
+
+        await trx
+          .update(schemas.vouchersTable)
+          .set({
+            status: 'available',
+            updatedAt: new Date(),
+          })
+          .where(eq(schemas.vouchersTable.id, voucherId));
+      });
+    } catch (error) {
+      console.error('Error deleting order:', error);
     }
   }
 }
