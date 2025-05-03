@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { VoucherList } from './interface';
+import { ProductsList } from './interface';
 import { ProductRepository } from './repositories/product.repositories';
 
 @Injectable()
@@ -10,24 +10,22 @@ export class ProductsService {
   //   return 'This action adds a new product';
   // }
 
-  async findVoucher(): Promise<{
+  async findAllProducts(): Promise<{
     success: boolean;
     message: string;
-    data: VoucherList;
+    data: ProductsList;
   }> {
-    const vouchers = await this.ProductRepository.getVoucher(); // vouchers: Voucher[]
+    const products = await this.ProductRepository.getAllProducts(); // vouchers: Voucher[]
 
-    if (vouchers.length === 0) {
-      throw new NotFoundException('Voucher not found');
+    if (products.length === 0) {
+      throw new NotFoundException('Products not found');
     }
-
-    console.log('vouchers', vouchers);
 
     return {
       success: true,
-      message: 'Voucher list fetched successfully',
+      message: 'Product list fetched successfully',
       data: {
-        vouchers,
+        products,
       },
     };
   }

@@ -1,9 +1,12 @@
-export interface Voucher {
-  type: string;
+export interface Products {
+  type: 'topup' | 'voucher';
   value: number;
-  stock: number;
+  price: number;
+  gameId: string | null;
+  gameName: string | null;
+  stock?: number;
 }
 
-export interface VoucherList {
-  vouchers: Voucher[];
+export interface ProductsList {
+  products: Products[];
 }

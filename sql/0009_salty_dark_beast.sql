@@ -1,0 +1,1 @@
+ALTER TABLE "payments" DROP COLUMN "external_id";

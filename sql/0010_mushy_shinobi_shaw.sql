@@ -1,0 +1,1 @@
+ALTER TABLE "vouchers" ADD COLUMN "is_unlimited" boolean DEFAULT false NOT NULL;

@@ -1,27 +1,27 @@
-export interface QuickOrder {
-  id: string;
+export interface Order {
+  orderId: string;
   userId: string;
-  name: string;
+  productId: string;
+  customerName: string;
   email: string;
-  voucherId: string | null;
   target?: string | null;
+  gameName: string;
+  type: 'voucher' | 'topup';
   value: number;
   priceTotal: number;
   status: string;
-  type: string;
   createdAt: Date;
+  quantity: number;
 }
 
-// export interface order {
-//   id: string;
-//   userId: string;
-//   name: string;
-//   email: string;
-//   voucherId: string | null;
-//   target?: string | null;
-//   value: number;
-//   priceTotal: number;
-//   status: string;
-//   type: string;
-//   createdAt: Date;
-// }
+export interface orderRequest {
+  userId: string;
+  gameId: string;
+  customerName: string;
+  email: string;
+  target?: string | null;
+  gameName: string;
+  type: 'voucher' | 'topup';
+  value: number;
+  quantity: number;
+}

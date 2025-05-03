@@ -9,18 +9,18 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { User } from 'interfaces/user.interface';
 import { AuthGuard } from './auth.guard';
 import { RequestWithUser } from './interfaces';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 
-//add auth guard later
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  signIn(@Body() credentials: User) {
+  signIn(@Body() credentials: LoginDto) {
     return this.authService.login(credentials);
   }
 
@@ -31,7 +31,7 @@ export class AuthController {
   }
 
   @Post('register')
-  register(@Body() user: User) {
+  register(@Body() user: RegisterDto) {
     return this.authService.register(user);
   }
 }

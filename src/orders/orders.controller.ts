@@ -1,14 +1,15 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import { QuickOrder } from './interface';
+import { OrderDto } from './dto/create-order.dto';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  // authguard
-  @Post('quick-order')
-  createQuickOrder(@Body() quickOrderData: QuickOrder) {
-    return this.ordersService.createQuickOrder(quickOrderData);
+  @UseGuards(AuthGuard)
+  @Post('order')
+  createOrder(@Body() OrderData: OrderDto) {
+    return this.ordersService.createOrder(OrderData);
   }
 }

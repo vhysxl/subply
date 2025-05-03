@@ -1,0 +1,1 @@
+ALTER TABLE "games" ADD COLUMN "currency" varchar(50) NOT NULL;

@@ -1,8 +1,13 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
 import * as schemas from 'schemas/index';
-import { QuickOrder } from '../interface';
+import { orderRequest } from '../interface';
 import { and, eq } from 'drizzle-orm';
 
 @Injectable()
@@ -11,49 +16,72 @@ export class OrderRepository {
     @Inject(DATABASE_CONNECTION) private db: NeonDatabase<typeof schemas>,
   ) {}
 
-  //kinda problematic, need to add delete function for fallback
-
-  async createQuickOrder({ userId, value, type, name, email }: QuickOrder) {
+  async createVoucherOrder({
+    userId,
+    gameId,
+    value,
+    type,
+    customerName,
+    email,
+    quantity,
+  }: orderRequest) {
     try {
       const order = await this.db.transaction(async (trx) => {
-        const availableVouchers = await trx
-          .select()
-          .from(schemas.vouchersTable)
+        const [voucherWithGame] = await trx
+          .select({
+            product: schemas.productsTable,
+            gameName: schemas.games.name,
+          })
+          .from(schemas.productsTable)
+          .innerJoin(
+            schemas.games,
+            eq(schemas.productsTable.gameId, schemas.games.gameId),
+          )
           .where(
             and(
-              eq(schemas.vouchersTable.status, 'available'),
-              eq(schemas.vouchersTable.type, type),
-              eq(schemas.vouchersTable.value, String(value)),
+              eq(schemas.productsTable.status, 'available'),
+              eq(schemas.productsTable.type, type),
+              eq(schemas.productsTable.gameId, gameId),
+              eq(schemas.productsTable.value, String(value)),
             ),
           )
           .limit(1);
 
-        if (availableVouchers.length === 0) {
-          throw new Error('No available vouchers found');
+        if (!voucherWithGame) {
+          throw new NotFoundException('No available vouchers found');
         }
+
+        const totalPrice = Number(voucherWithGame.product.price) * quantity;
 
         const [newOrder] = await trx
           .insert(schemas.ordersTable)
           .values({
             userId: userId,
-            name: name,
+            customerName: customerName,
             email: email,
-            voucherId: availableVouchers[0].id,
-            value: availableVouchers[0].value,
-            priceTotal: availableVouchers[0].price,
-            type: availableVouchers[0].type,
+            productId: voucherWithGame.product.productId,
+            value: voucherWithGame.product.value,
+            priceTotal: String(totalPrice),
+            type: voucherWithGame.product.type,
             status: 'pending',
             target: '',
+            quantity: String(quantity),
+            gameName: voucherWithGame.gameName,
           })
-          .returning(); // kembalikan data order yang baru diinsert
+          .returning();
 
         await trx
-          .update(schemas.vouchersTable)
+          .update(schemas.productsTable)
           .set({
             status: 'used',
             updatedAt: new Date(),
           })
-          .where(eq(schemas.vouchersTable.id, availableVouchers[0].id));
+          .where(
+            eq(
+              schemas.productsTable.productId,
+              voucherWithGame.product.productId,
+            ),
+          );
 
         return newOrder;
       });
@@ -62,30 +90,116 @@ export class OrderRepository {
         ...order,
         value: Number(order.value),
         priceTotal: Number(order.priceTotal),
+        quantity: Number(order.quantity),
       };
     } catch (error) {
       console.error('Error creating quick order:', error);
-      throw new Error('Error creating quick order');
+      throw new InternalServerErrorException(
+        'Failed to create order, please try again later',
+      );
     }
   }
 
-  async fallbackDeleteOrder(orderId: string, voucherId: string) {
+  async createDirectTopup({
+    userId,
+    gameId,
+    value,
+    type,
+    customerName,
+    email,
+    target,
+    quantity,
+  }: orderRequest) {
+    try {
+      const order = await this.db.transaction(async (trx) => {
+        const [topupWithGame] = await trx
+          .select({
+            product: schemas.productsTable,
+            gameName: schemas.games.name,
+          })
+          .from(schemas.productsTable)
+          .innerJoin(
+            schemas.games,
+            eq(schemas.productsTable.gameId, schemas.games.gameId),
+          )
+          .where(
+            and(
+              eq(schemas.productsTable.status, 'available'),
+              eq(schemas.productsTable.type, type),
+              eq(schemas.productsTable.gameId, gameId),
+              eq(schemas.productsTable.value, String(value)),
+            ),
+          )
+          .limit(1);
+
+        if (!topupWithGame) {
+          throw new NotFoundException('No available topup option');
+        }
+
+        const totalPrice = Number(topupWithGame.product.price) * quantity;
+
+        const [newOrder] = await trx
+          .insert(schemas.ordersTable)
+          .values({
+            userId: userId,
+            customerName: customerName,
+            email: email,
+            productId: topupWithGame.product.productId,
+            value: topupWithGame.product.value,
+            priceTotal: String(totalPrice),
+            type: topupWithGame.product.type,
+            status: 'pending',
+            target: target,
+            quantity: String(quantity),
+            gameName: topupWithGame.gameName,
+          })
+          .returning();
+
+        return newOrder;
+      });
+
+      return {
+        ...order,
+        value: Number(order.value),
+        priceTotal: Number(order.priceTotal),
+        quantity: Number(order.quantity),
+      };
+    } catch (error) {
+      console.error('Error creating quick order:', error);
+      throw new InternalServerErrorException(
+        'Failed to create order, please try again later',
+      );
+    }
+  }
+
+  async fallbackDeleteOrder(
+    orderId: string,
+    voucherId: string,
+    type: 'topup' | 'voucher',
+  ) {
     try {
       await this.db.transaction(async (trx) => {
         await trx
           .delete(schemas.ordersTable)
-          .where(eq(schemas.ordersTable.id, orderId));
+          .where(eq(schemas.ordersTable.productId, orderId));
 
-        await trx
-          .update(schemas.vouchersTable)
-          .set({
-            status: 'available',
-            updatedAt: new Date(),
-          })
-          .where(eq(schemas.vouchersTable.id, voucherId));
+        if (type === 'voucher') {
+          await trx
+            .update(schemas.productsTable)
+            .set({
+              status: 'available',
+              updatedAt: new Date(),
+            })
+            .where(eq(schemas.productsTable.productId, voucherId));
+        }
       });
     } catch (error) {
       console.error('Error deleting order:', error);
     }
+  }
+
+  //soon
+  updateOrderStatus(transaction_status: string) {
+    console.log(transaction_status);
   }
 }

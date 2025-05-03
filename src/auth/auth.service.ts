@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { User } from 'interfaces/user.interface';
+
+import { LoginCredentials, RegisterInterface, User } from './interfaces';
 
 @Injectable()
 export class AuthService {
@@ -12,10 +13,15 @@ export class AuthService {
   ) {}
 
   async login(
-    credentials: User,
+    credentials: LoginCredentials,
   ): Promise<{ token: string; user: Omit<User, 'password'> }> {
     const user = await this.usersService.credentialsCheck(credentials);
-    const payload = { sub: user.id, name: user.name, email: user.email };
+    const payload = {
+      sub: user.userId,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt,
+    };
 
     return {
       token: await this.jwtService.signAsync(payload),
@@ -23,8 +29,10 @@ export class AuthService {
     };
   }
 
-  async register(user: User): Promise<{ success: boolean; message: string }> {
-    const { password, ...rest } = user;
+  async register(
+    credentials: RegisterInterface,
+  ): Promise<{ success: boolean; message: string }> {
+    const { password, ...rest } = credentials;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 

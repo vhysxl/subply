@@ -22,7 +22,7 @@ export class ProductsController {
 
   @Get()
   findAll() {
-    return this.productsService.findVoucher();
+    return this.productsService.findAllProducts();
   }
 
   // @Get(':id')

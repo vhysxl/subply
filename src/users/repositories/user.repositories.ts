@@ -2,8 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
 import * as schemas from 'schemas/index';
-import { User } from '../../../interfaces/user.interface';
 import { eq } from 'drizzle-orm';
+import { RegisterInterface } from 'src/auth/interfaces';
 
 @Injectable()
 export class UserRepository {
@@ -11,7 +11,7 @@ export class UserRepository {
     @Inject(DATABASE_CONNECTION) private db: NeonDatabase<typeof schemas>,
   ) {}
 
-  async createUser({ email, name, password }: User) {
+  async createUser({ email, name, password }: RegisterInterface) {
     try {
       const user = await this.db.insert(schemas.usersTable).values({
         email,

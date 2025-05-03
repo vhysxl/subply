@@ -3,11 +3,12 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { Transaction } from './interface';
+import { Payment, Transaction } from './interface';
+import { PaymentRepository } from './repositories/payments.repositories';
 
 @Injectable()
 export class PaymentsService {
-  constructor() {}
+  constructor(private readonly paymentRepository: PaymentRepository) {}
   private readonly midtransUrl =
     'https://app.sandbox.midtrans.com/snap/v1/transactions';
   private readonly serverKey = process.env.MIDTRANS_SERVER_KEY;
@@ -39,6 +40,7 @@ export class PaymentsService {
     };
 
     try {
+      //change to nestjs fetch
       const response = await fetch(this.midtransUrl, {
         method: 'POST',
         headers: {
@@ -52,13 +54,9 @@ export class PaymentsService {
 
       const result = (await response.json()) as Transaction;
 
-      console.log('Midtrans response:', result);
-
       if (!result.redirect_url || !result.token) {
         throw new BadRequestException('Invalid response from Midtrans');
       }
-
-      console.log('Midtrans response:', result);
 
       return {
         success: true,
@@ -68,6 +66,15 @@ export class PaymentsService {
     } catch (error) {
       console.error('Error creating payment intent:', error);
       throw new InternalServerErrorException('Failed to create payment intent');
+    }
+  }
+
+  async setPaymentStatus(statusData: Payment) {
+    try {
+      await this.paymentRepository.createPaymentData(statusData);
+    } catch (error) {
+      console.error(error);
+      return;
     }
   }
 }
