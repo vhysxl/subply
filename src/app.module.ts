@@ -11,7 +11,6 @@ import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
-    ProductsModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -20,6 +19,7 @@ import { PaymentsModule } from './payments/payments.module';
     DatabaseModule,
     OrdersModule,
     PaymentsModule,
+    ProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

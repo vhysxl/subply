@@ -5,6 +5,8 @@ export interface Products {
   gameId: string | null;
   gameName: string | null;
   stock?: number;
+  isPopular: boolean;
+  currency: string;
 }
 
 export interface ProductsList {

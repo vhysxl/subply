@@ -9,16 +9,16 @@ import { DatabaseModule } from 'src/database/database.module';
 
 @Module({
   imports: [
-    UsersModule,
+    DatabaseModule, //Inject database
+    UsersModule, //Inject users service
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        global: true,
+        global: true, //token sifatnya global
         secret: configService.getOrThrow<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '1h' },
+        signOptions: { expiresIn: '1h' }, //token cuma valid 1 jam doang
       }),
     }),
-    DatabaseModule,
   ],
   controllers: [AuthController],
   providers: [AuthService],

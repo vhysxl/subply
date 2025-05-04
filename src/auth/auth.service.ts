@@ -15,7 +15,9 @@ export class AuthService {
   async login(
     credentials: LoginCredentials,
   ): Promise<{ token: string; user: Omit<User, 'password'> }> {
+    //ngecek user
     const user = await this.usersService.credentialsCheck(credentials);
+
     const payload = {
       sub: user.userId,
       name: user.name,

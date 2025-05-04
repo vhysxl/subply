@@ -39,6 +39,7 @@ export class UsersService {
     email,
     password,
   }: LoginCredentials): Promise<Omit<User, 'password'>> {
+    //ngecek user
     const user = await this.userRepository.findUserByEmail(email);
 
     if (user.length === 0) {

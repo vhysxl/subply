@@ -48,6 +48,8 @@ export class ProductRepository {
           price: schemas.productsTable.price,
           gameId: schemas.productsTable.gameId,
           gameName: schemas.games.name,
+          isPopular: schemas.games.isPopular,
+          curreny: schemas.games.currency,
           stock: count(),
         })
         .from(schemas.productsTable)
@@ -62,6 +64,8 @@ export class ProductRepository {
           schemas.productsTable.price,
           schemas.productsTable.gameId,
           schemas.games.name,
+          schemas.games.isPopular,
+          schemas.games.currency,
         )
         .orderBy(schemas.productsTable.value);
 
@@ -76,6 +80,8 @@ export class ProductRepository {
           price: Number(item.price),
           gameId: item.gameId,
           gameName: item.gameName,
+          isPopular: item.isPopular,
+          currency: item.curreny,
         };
 
         if (item.type === 'voucher') {

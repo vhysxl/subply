@@ -7,9 +7,10 @@ export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post('status')
-  async getPaymentStatus(@Body() statusData: Payment) {
+  getPaymentStatus(@Body() statusData: Payment) {
     try {
-      await this.paymentsService.setPaymentStatus(statusData);
+      console.log(statusData);
+      // await this.paymentsService.setPaymentStatus(statusData);
 
       return { status: 'OK' };
     } catch (error) {

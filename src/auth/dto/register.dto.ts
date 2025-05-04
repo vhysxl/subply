@@ -1,6 +1,8 @@
 import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 
+// filter data masuk register
 export class RegisterDto {
+  @IsNotEmpty()
   @IsEmail()
   email: string;
 
