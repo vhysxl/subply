@@ -58,6 +58,16 @@ export class PaymentsService {
         throw new BadRequestException('Invalid response from Midtrans');
       }
 
+      const paymentData = await this.paymentRepository.createPaymentData(
+        order_id,
+        result.redirect_url,
+        String(totalPrice),
+      );
+
+      if (!paymentData) {
+        throw new InternalServerErrorException('Failed to create order');
+      }
+
       return {
         success: true,
         message: 'Payment intent created successfully',
@@ -71,10 +81,18 @@ export class PaymentsService {
 
   async setPaymentStatus(statusData: Payment) {
     try {
-      await this.paymentRepository.createPaymentData(statusData);
+      const existingPayment = await this.paymentRepository.findPaymentById(
+        statusData.order_id,
+      );
+
+      if (existingPayment) {
+        return await this.paymentRepository.updatePayment(statusData);
+      } else {
+        throw new BadRequestException('order data not found');
+      }
     } catch (error) {
-      console.error(error);
-      return;
+      console.error('Error in setPaymentStatus:', error);
+      return null;
     }
   }
 }

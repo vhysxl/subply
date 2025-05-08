@@ -20,6 +20,7 @@ export const orderStatusEnum = pgEnum('order_status', [
   'pending',
   'completed',
   'cancelled',
+  'processed',
 ]);
 export const typeEnum = pgEnum('type', ['voucher', 'topup']);
 
@@ -90,4 +91,5 @@ export const paymentsTable = pgTable('payments', {
   paymentMethod: varchar('payment_method', { length: 100 }),
   paidAt: timestamp('paid_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  paymentLink: varchar('payment_link', { length: 255 }),
 });

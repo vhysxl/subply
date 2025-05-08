@@ -25,3 +25,17 @@ export interface orderRequest {
   value: number;
   quantity: number;
 }
+
+export interface GetOrderData {
+  orderId: string;
+  target?: string | null;
+  status: string;
+  createdAt: Date;
+  priceTotal: number;
+  value: number;
+  type: 'voucher' | 'topup';
+  gameName: string;
+  quantity: number;
+}
+
+export type OrdersDataByUser = GetOrderData[];

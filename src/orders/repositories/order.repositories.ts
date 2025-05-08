@@ -198,6 +198,103 @@ export class OrderRepository {
     }
   }
 
+  async getOrdersByUser(
+    userId: string,
+    status: 'pending' | 'completed' | 'cancelled' | 'processed',
+  ) {
+    try {
+      if (status === 'pending') {
+        const orders = await this.db
+          .select({
+            orderId: schemas.ordersTable.orderId,
+            target: schemas.ordersTable.target,
+            status: schemas.ordersTable.status,
+            createdAt: schemas.ordersTable.createdAt,
+            priceTotal: schemas.ordersTable.priceTotal,
+            value: schemas.ordersTable.value,
+            type: schemas.ordersTable.type,
+            gameName: schemas.ordersTable.gameName,
+            quantity: schemas.ordersTable.quantity,
+            redirectLink: schemas.paymentsTable.paymentLink,
+          })
+          .from(schemas.ordersTable)
+          .leftJoin(
+            schemas.paymentsTable,
+            eq(schemas.ordersTable.orderId, schemas.paymentsTable.orderId),
+          )
+          .where(
+            and(
+              eq(schemas.ordersTable.userId, userId),
+              eq(schemas.ordersTable.status, status),
+            ),
+          );
+
+        return orders.map((order) => ({
+          ...order,
+          value: Number(order.value),
+          priceTotal: Number(order.priceTotal),
+          quantity: Number(order.quantity),
+        }));
+      } else {
+        const orders = await this.db
+          .select({
+            orderId: schemas.ordersTable.orderId,
+            target: schemas.ordersTable.target,
+            status: schemas.ordersTable.status,
+            createdAt: schemas.ordersTable.createdAt,
+            priceTotal: schemas.ordersTable.priceTotal,
+            value: schemas.ordersTable.value,
+            type: schemas.ordersTable.type,
+            gameName: schemas.ordersTable.gameName,
+            quantity: schemas.ordersTable.quantity,
+          })
+          .from(schemas.ordersTable)
+          .where(
+            and(
+              eq(schemas.ordersTable.userId, userId),
+              eq(schemas.ordersTable.status, status),
+            ),
+          );
+
+        return orders.map((order) => ({
+          ...order,
+          value: Number(order.value),
+          priceTotal: Number(order.priceTotal),
+          quantity: Number(order.quantity),
+        }));
+      }
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException('Failed to fetch orders');
+    }
+  }
+
+  async getOrderDetails(orderId: string, email: string) {
+    try {
+      const [result] = await this.db
+        .select()
+        .from(schemas.ordersTable)
+        .where(
+          and(
+            eq(schemas.ordersTable.orderId, orderId),
+            eq(schemas.ordersTable.email, email),
+          ),
+        );
+
+      console.log(result);
+
+      return {
+        ...result,
+        priceTotal: Number(result.priceTotal),
+        value: Number(result.value),
+        quantity: Number(result.quantity),
+      };
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException('Failed to fetch order details');
+    }
+  }
+
   //soon
   updateOrderStatus(transaction_status: string) {
     console.log(transaction_status);

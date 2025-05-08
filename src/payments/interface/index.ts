@@ -3,7 +3,13 @@ export interface Transaction {
   redirect_url: string;
 }
 
+export interface va_data {
+  va_number: string;
+  bank: string;
+}
+
 export interface Payment {
+  va_numbers: va_data[];
   id: string;
   order_id: string;
   transaction_status: string;

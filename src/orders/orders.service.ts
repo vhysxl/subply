@@ -1,15 +1,17 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { OrderRepository } from './repositories/order.repositories';
-import { Order } from './interface';
+import { GetOrderData, Order, OrdersDataByUser } from './interface';
 import { PaymentsService } from 'src/payments/payments.service';
 import { Transaction } from 'src/payments/interface';
 import { ProductRepository } from 'src/products/repositories/product.repositories';
 import { OrderDto } from './dto/create-order.dto';
+import { GetOrderDto } from './dto/get-order.dto';
 
 @Injectable()
 export class OrdersService {
@@ -97,6 +99,59 @@ export class OrdersService {
       success: true,
       message: 'Order created successfully',
       data: { order, payment: paymentResponse.data },
+    };
+  }
+
+  async findOrdersByUser(query: GetOrderDto): Promise<{
+    success: boolean;
+    message: string;
+    data?: {
+      orders: OrdersDataByUser;
+    };
+  }> {
+    const orders = await this.orderRepository.getOrdersByUser(
+      query.userId,
+      query.status,
+    );
+
+    if (orders.length === 0) {
+      return {
+        success: true,
+        message: "User doesn't have any orders",
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Successfully fetched orders',
+      data: {
+        orders: orders,
+      },
+    };
+  }
+
+  async getOrderDetails(
+    orderId: string,
+    email: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: GetOrderData;
+  }> {
+    const data = await this.orderRepository.getOrderDetails(orderId, email);
+
+    if (data.email !== email) {
+      throw new ForbiddenException(
+        'you dont have permission to see this order',
+      );
+    } else if (!data) {
+      throw new NotFoundException('no order data for this order id');
+    }
+
+    return {
+      success: true,
+      message: 'successfully fetch order details',
+      data: data,
     };
   }
 }
