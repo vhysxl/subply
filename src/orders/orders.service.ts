@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { OrderRepository } from './repositories/order.repositories';
-import { GetOrderData, Order, OrdersDataByUser } from './interface';
+import { GetOrderDetails, Order, OrdersDataByUser } from './interface';
 import { PaymentsService } from 'src/payments/payments.service';
 import { Transaction } from 'src/payments/interface';
 import { ProductRepository } from 'src/products/repositories/product.repositories';
@@ -136,8 +136,12 @@ export class OrdersService {
   ): Promise<{
     success: boolean;
     message: string;
-    data: GetOrderData;
+    data: GetOrderDetails;
   }> {
+    if (!orderId || typeof orderId !== 'string') {
+      throw new BadRequestException('Invalid order ID');
+    }
+
     const data = await this.orderRepository.getOrderDetails(orderId, email);
 
     if (data.email !== email) {
@@ -147,6 +151,8 @@ export class OrdersService {
     } else if (!data) {
       throw new NotFoundException('no order data for this order id');
     }
+
+    console.log(data);
 
     return {
       success: true,

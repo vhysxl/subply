@@ -10,9 +10,18 @@ import { ProductsModule } from 'src/products/products.module';
 import { ProductRepository } from 'src/products/repositories/product.repositories';
 import { ProductsService } from 'src/products/products.service';
 import { JwtModule } from '@nestjs/jwt';
+import { PaymentsOrdersSharedModule } from 'src/payments-orders-shared/payments-orders-shared.module';
+import { PaymentsOrdersSharedService } from 'src/payments-orders-shared/payments-orders-shared.service';
+import { PaymentsOrdersSharedRepositories } from 'src/payments-orders-shared/repositories/payments-orders-shared.repositories';
 
 @Module({
-  imports: [DatabaseModule, PaymentsModule, ProductsModule, JwtModule],
+  imports: [
+    DatabaseModule,
+    PaymentsModule,
+    ProductsModule,
+    JwtModule,
+    PaymentsOrdersSharedModule,
+  ],
   controllers: [OrdersController],
   providers: [
     OrdersService,
@@ -21,6 +30,8 @@ import { JwtModule } from '@nestjs/jwt';
     PaymentRepository,
     ProductRepository,
     ProductsService,
+    PaymentsOrdersSharedService,
+    PaymentsOrdersSharedRepositories,
   ],
 })
 export class OrdersModule {}

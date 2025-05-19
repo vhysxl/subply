@@ -41,7 +41,7 @@ export class PaymentRepository {
             ? 'pending'
             : 'failed';
     try {
-      const result = await this.db
+      const [result] = await this.db
         .update(schemas.paymentsTable)
         .set({
           status: newStatus,
@@ -53,7 +53,8 @@ export class PaymentRepository {
               ? new Date(Date.now() + 7 * 60 * 60 * 1000) //waktu wib
               : null,
         })
-        .where(eq(schemas.paymentsTable.orderId, orderId));
+        .where(eq(schemas.paymentsTable.orderId, orderId))
+        .returning();
 
       return result;
     } catch (error) {

@@ -38,4 +38,9 @@ export interface GetOrderData {
   quantity: number;
 }
 
+export interface GetOrderDetails extends GetOrderData {
+  paymentLink?: string | null;
+  voucherCode?: string | null;
+}
+
 export type OrdersDataByUser = GetOrderData[];

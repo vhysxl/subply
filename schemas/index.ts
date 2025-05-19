@@ -21,6 +21,7 @@ export const orderStatusEnum = pgEnum('order_status', [
   'completed',
   'cancelled',
   'processed',
+  'failed',
 ]);
 export const typeEnum = pgEnum('type', ['voucher', 'topup']);
 

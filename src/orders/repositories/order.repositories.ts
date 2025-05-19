@@ -272,8 +272,29 @@ export class OrderRepository {
   async getOrderDetails(orderId: string, email: string) {
     try {
       const [result] = await this.db
-        .select()
+        .select({
+          orderId: schemas.ordersTable.orderId,
+          target: schemas.ordersTable.target,
+          status: schemas.ordersTable.status,
+          createdAt: schemas.ordersTable.createdAt,
+          priceTotal: schemas.ordersTable.priceTotal,
+          value: schemas.ordersTable.value,
+          type: schemas.ordersTable.type,
+          gameName: schemas.ordersTable.gameName,
+          quantity: schemas.ordersTable.quantity,
+          email: schemas.ordersTable.email,
+          paymentLink: schemas.paymentsTable.paymentLink,
+          voucherCode: schemas.productsTable.code,
+        })
         .from(schemas.ordersTable)
+        .leftJoin(
+          schemas.paymentsTable,
+          eq(schemas.ordersTable.orderId, schemas.paymentsTable.orderId),
+        )
+        .leftJoin(
+          schemas.productsTable,
+          eq(schemas.ordersTable.productId, schemas.productsTable.productId),
+        )
         .where(
           and(
             eq(schemas.ordersTable.orderId, orderId),
@@ -283,20 +304,29 @@ export class OrderRepository {
 
       console.log(result);
 
-      return {
+      const baseResult = {
         ...result,
         priceTotal: Number(result.priceTotal),
         value: Number(result.value),
         quantity: Number(result.quantity),
       };
+
+      return {
+        ...baseResult,
+        paymentLink:
+          result.status === 'completed' && result.type === 'voucher'
+            ? null
+            : result.paymentLink,
+        voucherCode:
+          result.status === 'completed' && result.type === 'voucher'
+            ? result.voucherCode
+            : result.status === 'pending' && result.type === 'voucher'
+              ? result.voucherCode
+              : null,
+      };
     } catch (error) {
       console.error(error);
       throw new InternalServerErrorException('Failed to fetch order details');
     }
-  }
-
-  //soon
-  updateOrderStatus(transaction_status: string) {
-    console.log(transaction_status);
   }
 }

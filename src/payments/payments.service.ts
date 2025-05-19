@@ -5,10 +5,14 @@ import {
 } from '@nestjs/common';
 import { Payment, Transaction } from './interface';
 import { PaymentRepository } from './repositories/payments.repositories';
+import { PaymentsOrdersSharedService } from 'src/payments-orders-shared/payments-orders-shared.service';
 
 @Injectable()
 export class PaymentsService {
-  constructor(private readonly paymentRepository: PaymentRepository) {}
+  constructor(
+    private readonly paymentRepository: PaymentRepository,
+    private readonly paymentsOrdersSharedService: PaymentsOrdersSharedService,
+  ) {}
   private readonly midtransUrl =
     'https://app.sandbox.midtrans.com/snap/v1/transactions';
   private readonly serverKey = process.env.MIDTRANS_SERVER_KEY;
@@ -85,11 +89,24 @@ export class PaymentsService {
         statusData.order_id,
       );
 
-      if (existingPayment) {
-        return await this.paymentRepository.updatePayment(statusData);
-      } else {
+      if (!existingPayment) {
         throw new BadRequestException('order data not found');
       }
+
+      const paymentData =
+        await this.paymentRepository.updatePayment(statusData);
+
+      if (!paymentData) {
+        throw new Error('Failed to update payment');
+      }
+
+      const result =
+        await this.paymentsOrdersSharedService.updateOrderStatusByPayments(
+          paymentData.orderId,
+          paymentData.status,
+        );
+
+      return result;
     } catch (error) {
       console.error('Error in setPaymentStatus:', error);
       return null;
