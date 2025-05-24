@@ -1,14 +1,46 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ProductsList } from './interface';
+import { NewlyCreatedProduct, ProductsList } from './interface';
 import { ProductRepository } from './repositories/product.repositories';
+import { CreateProductDto } from './dto/create-products.dto';
 
 @Injectable()
 export class ProductsService {
   constructor(private readonly ProductRepository: ProductRepository) {}
 
-  // create(createProductDto: CreateProductDto) {
-  //   return 'This action adds a new product';
-  // }
+  //Admin stuff
+  async createProduct(createProductDto: CreateProductDto): Promise<{
+    success: boolean;
+    message: string;
+    data: NewlyCreatedProduct;
+  }> {
+    const product =
+      await this.ProductRepository.createProduct(createProductDto);
+
+    if (!product) {
+      throw new NotFoundException('Product failed to create');
+    }
+
+    return {
+      success: true,
+      message: 'Product created successfully',
+      data: product,
+    };
+  }
+
+  async deleteProduct(
+    productId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const result = await this.ProductRepository.deleteProduct(productId);
+
+    if (!result) {
+      throw new NotFoundException('Failed to delete product');
+    }
+
+    return {
+      success: true,
+      message: 'Product deleted successfully',
+    };
+  }
 
   async findAllProducts(): Promise<{
     success: boolean;
@@ -36,9 +68,5 @@ export class ProductsService {
 
   // update(id: number, updateProductDto: UpdateProductDto) {
   //   return `This action updates a #${id} product`;
-  // }
-
-  // remove(id: number) {
-  //   return `This action removes a #${id} product`;
   // }
 }

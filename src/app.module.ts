@@ -9,6 +9,7 @@ import { DatabaseModule } from './database/database.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PaymentsOrdersSharedModule } from './payments-orders-shared/payments-orders-shared.module';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { PaymentsOrdersSharedModule } from './payments-orders-shared/payments-or
       isGlobal: true,
     }),
     AuthModule,
+    JwtModule,
     UsersModule,
     DatabaseModule,
     OrdersModule,

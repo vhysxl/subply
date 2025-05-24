@@ -1,24 +1,36 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
-  // Post,
-  // Body,
-  // Patch,
-  // Param,
-  // Delete,
+  Param,
+  Post,
+  UseGuards,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
-// import { CreateProductDto } from './dto/create-product.dto';
-// import { UpdateProductDto } from './dto/update-product.dto';
+import { Roles } from 'src/common/decorator/role.decorator';
+import { Role } from 'src/common/constants/role.enum';
+import { CreateProductDto } from './dto/create-products.dto';
+import { AuthGuard } from 'src/auth/auth.guard';
+import { RolesGuard } from 'src/common/guards/roles.guard';
 
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  // @Post()
-  // create(@Body() createProductDto: CreateProductDto) {
-  //   return this.productsService.create(createProductDto);
-  // }
+  @Post()
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.admin)
+  create(@Body() createProductDto: CreateProductDto) {
+    return this.productsService.createProduct(createProductDto);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.admin)
+  remove(@Param('id') productId: string) {
+    return this.productsService.deleteProduct(productId);
+  }
 
   @Get()
   findAll() {
@@ -36,7 +48,4 @@ export class ProductsController {
   // }
 
   // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.productsService.remove(+id);
-  // }
 }

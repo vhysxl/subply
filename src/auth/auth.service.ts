@@ -14,7 +14,7 @@ export class AuthService {
 
   async login(
     credentials: LoginCredentials,
-  ): Promise<{ token: string; user: Omit<User, 'password'> }> {
+  ): Promise<{ token: string; user: Omit<User, 'password' | 'role'> }> {
     //ngecek user
     const user = await this.usersService.credentialsCheck(credentials);
 
@@ -23,11 +23,19 @@ export class AuthService {
       name: user.name,
       email: user.email,
       createdAt: user.createdAt,
+      roles: user.roles,
+    };
+
+    const sanitazedUser = {
+      userId: user.userId,
+      name: user.name,
+      email: user.email,
+      createdAt: user.createdAt,
     };
 
     return {
       token: await this.jwtService.signAsync(payload),
-      user: user,
+      user: sanitazedUser,
     };
   }
 

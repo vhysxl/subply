@@ -11,8 +11,9 @@ import { ConfigService } from '@nestjs/config';
 interface RequestWithUser extends Request {
   user?: {
     sub: string;
-    username: string;
+    name: string;
     email: string;
+    roles: string[];
   };
 }
 
@@ -30,13 +31,19 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException();
     }
     try {
-      const payload: { sub: string; username: string; email: string } =
-        await this.jwtService.verifyAsync(token, {
-          secret: this.configService.getOrThrow<string>('JWT_SECRET'),
-        });
+      const payload: {
+        sub: string;
+        name: string;
+        email: string;
+        roles: string[];
+      } = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.getOrThrow<string>('JWT_SECRET'),
+      });
       // 💡 We're assigning the payload to the request object here
       // so that we can access it in our route handlers
       request.user = payload;
+
+      console.log(request.user);
     } catch {
       throw new UnauthorizedException();
     }

@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   pgTable,
   uuid,
@@ -24,6 +25,7 @@ export const orderStatusEnum = pgEnum('order_status', [
   'failed',
 ]);
 export const typeEnum = pgEnum('type', ['voucher', 'topup']);
+export const roleEnum = pgEnum('role', ['admin', 'user', 'superadmin']);
 
 // Users
 export const usersTable = pgTable('users', {
@@ -32,6 +34,10 @@ export const usersTable = pgTable('users', {
   name: varchar('name', { length: 100 }).notNull(),
   password: varchar('password', { length: 100 }).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  roles: roleEnum('roles')
+    .array()
+    .notNull()
+    .default(sql`ARRAY['user']::role[]`),
 });
 
 // Games
@@ -40,6 +46,7 @@ export const games = pgTable('games', {
   name: varchar('name', { length: 100 }).notNull().unique(),
   isPopular: boolean('is_popular').notNull().default(false),
   currency: varchar('currency', { length: 50 }).notNull(),
+  imageUrl: varchar('image_url', { length: 200 }),
 });
 
 // Products

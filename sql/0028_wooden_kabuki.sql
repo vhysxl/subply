@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "roles" "role"[] DEFAULT ARRAY['user']::role[] NOT NULL;
