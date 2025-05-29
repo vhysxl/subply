@@ -57,10 +57,11 @@ export const productsTable = pgTable('products', {
   status: statusEnum('status').notNull(),
   type: typeEnum('type').notNull(),
   price: numeric('price', { precision: 10, scale: 2 }).notNull(),
-  name: varchar('name', { length: 100 }),
-  gameId: uuid('game_id').references(() => games.gameId, {
-    onDelete: 'set null',
-  }),
+  gameId: uuid('game_id')
+    .references(() => games.gameId, {
+      onDelete: 'cascade',
+    })
+    .notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -79,7 +80,7 @@ export const ordersTable = pgTable('orders', {
   target: varchar('target', { length: 255 }),
   status: orderStatusEnum('status').notNull().default('pending'),
   priceTotal: numeric('price_total', { precision: 10, scale: 2 }).notNull(),
-  value: numeric('value', { precision: 10, scale: 2 }).notNull(),
+  value: numeric('value', { precision: 10, scale: 2 }).notNull(), //in game value
   type: typeEnum('type').notNull(),
   gameName: varchar('game_name', { length: 100 }).notNull(),
   customerName: varchar('customer_name', { length: 100 }).notNull(),

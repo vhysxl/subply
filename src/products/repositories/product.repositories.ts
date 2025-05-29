@@ -135,7 +135,6 @@ export class ProductRepository {
           type: type,
           code: code || 'code not provided',
           status: 'available',
-          name: gameExists[0].name,
         })
         .returning();
 
