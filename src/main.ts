@@ -4,7 +4,11 @@ import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useGlobalPipes(new ValidationPipe()); //bikin validasi jalan (DTO)
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+    }),
+  ); //bikin validasi jalan (DTO)
 
   const host = process.env.HOST || '0.0.0.0';
   const port = process.env.PORT || 5000; //jalan di port 5000

@@ -13,6 +13,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { PaymentsOrdersSharedModule } from 'src/payments-orders-shared/payments-orders-shared.module';
 import { PaymentsOrdersSharedService } from 'src/payments-orders-shared/payments-orders-shared.service';
 import { PaymentsOrdersSharedRepositories } from 'src/payments-orders-shared/repositories/payments-orders-shared.repositories';
+import { GamesModule } from 'src/games/games.module';
+import { GamesRepository } from 'src/games/repositories/games.repositories';
+import { UsersModule } from 'src/users/users.module';
+import { UserRepository } from 'src/users/repositories/user.repositories';
 
 @Module({
   imports: [
@@ -21,6 +25,8 @@ import { PaymentsOrdersSharedRepositories } from 'src/payments-orders-shared/rep
     ProductsModule,
     JwtModule,
     PaymentsOrdersSharedModule,
+    GamesModule,
+    UsersModule,
   ],
   controllers: [OrdersController],
   providers: [
@@ -32,6 +38,8 @@ import { PaymentsOrdersSharedRepositories } from 'src/payments-orders-shared/rep
     ProductsService,
     PaymentsOrdersSharedService,
     PaymentsOrdersSharedRepositories,
+    GamesRepository,
+    UserRepository,
   ],
 })
 export class OrdersModule {}

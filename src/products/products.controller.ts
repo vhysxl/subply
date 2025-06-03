@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { Role } from 'src/common/constants/role.enum';
 import { CreateProductDto } from './dto/create-products.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
+import { updateProductDto } from './dto/update-products.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -20,14 +22,14 @@ export class ProductsController {
 
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.admin)
+  @Roles(Role.admin, Role.superadmin)
   create(@Body() createProductDto: CreateProductDto) {
     return this.productsService.createProduct(createProductDto);
   }
 
   @Delete(':id')
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.admin)
+  // @UseGuards(AuthGuard, RolesGuard)
+  // @Roles(Role.admin, Role.superadmin)
   remove(@Param('id') productId: string) {
     return this.productsService.deleteProduct(productId);
   }
@@ -37,15 +39,13 @@ export class ProductsController {
     return this.productsService.findAllProducts();
   }
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.productsService.findOne(+id);
-  // }
-
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
-  //   return this.productsService.update(+id, updateProductDto);
-  // }
-
-  // @Delete(':id')
+  @Patch(':id')
+  // @UseGuards(AuthGuard, RolesGuard)
+  // @Roles(Role.admin, Role.superadmin)
+  update(
+    @Param('id') productId: string,
+    @Body() updateProductDto: updateProductDto,
+  ) {
+    return this.productsService.updateProduct(updateProductDto, productId);
+  }
 }

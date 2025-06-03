@@ -47,6 +47,10 @@ export class PaymentsOrdersSharedRepositories {
         .where(eq(schemas.ordersTable.orderId, orderId))
         .returning();
 
+      if (!result) {
+        throw new InternalServerErrorException('Update failed');
+      }
+
       return result;
     } catch (error) {
       console.error(error);

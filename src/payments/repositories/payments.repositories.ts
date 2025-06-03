@@ -35,7 +35,7 @@ export class PaymentRepository {
     const newStatus =
       statusData.transaction_status === 'settlement'
         ? 'paid'
-        : statusData.transaction_status === 'expired'
+        : statusData.transaction_status === 'expire'
           ? 'expired'
           : statusData.transaction_status === 'pending'
             ? 'pending'
@@ -45,9 +45,7 @@ export class PaymentRepository {
         .update(schemas.paymentsTable)
         .set({
           status: newStatus,
-          paymentMethod: statusData.issuer
-            ? statusData.issuer
-            : (statusData.va_numbers[0]?.bank ?? null),
+          paymentMethod: statusData.payment_type,
           paidAt:
             newStatus === 'paid'
               ? new Date(Date.now() + 7 * 60 * 60 * 1000) //waktu wib

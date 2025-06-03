@@ -6,22 +6,8 @@ export interface RequestWithUser extends Request {
   };
 }
 
-export interface RegisterInterface {
+export interface AuthInterface {
   email: string;
   name: string;
   password: string;
-}
-
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface User {
-  userId: string;
-  name: string;
-  email: string;
-  password: string;
-  createdAt?: Date;
-  roles?: string[];
 }

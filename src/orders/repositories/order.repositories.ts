@@ -269,11 +269,12 @@ export class OrderRepository {
     }
   }
 
-  async getOrderDetails(orderId: string, email: string) {
+  async getOrderDetails(orderId: string, userId: string) {
     try {
       const [result] = await this.db
         .select({
           orderId: schemas.ordersTable.orderId,
+          userId: schemas.ordersTable.userId,
           target: schemas.ordersTable.target,
           status: schemas.ordersTable.status,
           createdAt: schemas.ordersTable.createdAt,
@@ -282,7 +283,6 @@ export class OrderRepository {
           type: schemas.ordersTable.type,
           gameName: schemas.ordersTable.gameName,
           quantity: schemas.ordersTable.quantity,
-          email: schemas.ordersTable.email,
           paymentLink: schemas.paymentsTable.paymentLink,
           voucherCode: schemas.productsTable.code,
         })
@@ -298,11 +298,13 @@ export class OrderRepository {
         .where(
           and(
             eq(schemas.ordersTable.orderId, orderId),
-            eq(schemas.ordersTable.email, email),
+            eq(schemas.ordersTable.userId, userId),
           ),
         );
 
-      console.log(result);
+      if (!result) {
+        throw new NotFoundException('Order not found');
+      }
 
       const baseResult = {
         ...result,
@@ -314,19 +316,99 @@ export class OrderRepository {
       return {
         ...baseResult,
         paymentLink:
-          result.status === 'completed' && result.type === 'voucher'
+          result.status === 'completed' ||
+          result.status === 'processed' ||
+          result.status === 'cancelled'
             ? null
             : result.paymentLink,
         voucherCode:
-          result.status === 'completed' && result.type === 'voucher'
+          result.type === 'voucher' && result.status === 'completed'
             ? result.voucherCode
-            : result.status === 'pending' && result.type === 'voucher'
-              ? result.voucherCode
-              : null,
+            : null,
       };
     } catch (error) {
       console.error(error);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new InternalServerErrorException('Failed to fetch order details');
+    }
+  }
+
+  async updateOrderStatus(
+    orderId: string,
+    status: 'pending' | 'completed' | 'cancelled' | 'processed' | 'failed',
+  ) {
+    try {
+      const [updatedOrder] = await this.db
+        .update(schemas.ordersTable)
+        .set({
+          status: status,
+        })
+        .where(eq(schemas.ordersTable.orderId, orderId))
+        .returning();
+
+      if (!updatedOrder) {
+        throw new NotFoundException('Order not found');
+      }
+
+      const { value, priceTotal, quantity } = updatedOrder;
+
+      const convertedOrder = {
+        ...updatedOrder,
+        value: Number(value),
+        priceTotal: Number(priceTotal),
+        quantity: Number(quantity),
+      };
+
+      return convertedOrder;
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (error.code === '22P02') {
+        throw new NotFoundException('Order not found');
+      }
+
+      throw new InternalServerErrorException(
+        'Failed to update order status, please try again later',
+      );
+    }
+  }
+
+  async cancelOder(orderId: string) {
+    try {
+      const [result] = await this.db
+        .update(schemas.ordersTable)
+        .set({ status: 'cancelled' })
+        .where(eq(schemas.ordersTable.orderId, orderId))
+        .returning();
+
+      if (!result) {
+        throw new NotFoundException('Product not found');
+      }
+
+      const { value, quantity, priceTotal } = result;
+
+      const convertedResult = {
+        ...result,
+        value: Number(value),
+        quantity: Number(quantity),
+        priceTotal: Number(priceTotal),
+      };
+
+      return convertedResult;
+    } catch (error) {
+      console.error(error);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to cancel order, Please try again later',
+      );
     }
   }
 }

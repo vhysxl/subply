@@ -1,25 +1,6 @@
-import {
-  IsEmail,
-  IsEnum,
-  IsInt,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-} from 'class-validator';
-
-export enum OrderType {
-  TOPUP = 'topup',
-  VOUCHER = 'voucher',
-}
+import { IsInt, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class OrderDto {
-  @IsUUID()
-  userId: string;
-
-  @IsEmail()
-  email: string;
-
   @IsUUID()
   gameId: string;
 
@@ -29,15 +10,6 @@ export class OrderDto {
 
   @IsInt()
   value: number;
-
-  @IsEnum(OrderType)
-  type: OrderType;
-
-  @IsString()
-  gameName: string;
-
-  @IsString()
-  customerName: string;
 
   @IsNumber()
   quantity: number;

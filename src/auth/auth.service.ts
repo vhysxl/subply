@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-
-import { LoginCredentials, RegisterInterface, User } from './interfaces';
+import { AuthInterface } from './interfaces';
+import { User } from 'src/users/interfaces';
 
 @Injectable()
 export class AuthService {
@@ -13,7 +13,7 @@ export class AuthService {
   ) {}
 
   async login(
-    credentials: LoginCredentials,
+    credentials: Pick<AuthInterface, 'email' | 'password'>,
   ): Promise<{ token: string; user: Omit<User, 'password' | 'role'> }> {
     //ngecek user
     const user = await this.usersService.credentialsCheck(credentials);
@@ -39,9 +39,10 @@ export class AuthService {
     };
   }
 
-  async register(
-    credentials: RegisterInterface,
-  ): Promise<{ success: boolean; message: string }> {
+  async register(credentials: AuthInterface): Promise<{
+    success: boolean;
+    message: string;
+  }> {
     const { password, ...rest } = credentials;
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -52,10 +53,6 @@ export class AuthService {
     };
 
     const result = await this.usersService.createUser(userWithHashedPassword);
-
-    return {
-      success: result.success,
-      message: result.message,
-    };
+    return result;
   }
 }

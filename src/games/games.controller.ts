@@ -34,7 +34,7 @@ export class GamesController {
 
   @Patch(':id')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.admin)
+  @Roles(Role.admin || Role.superadmin)
   update(@Param('id') gameId: string, @Body() updateGameDto: UpdateGameDto) {
     return this.gamesService.updateGame(gameId, updateGameDto);
   }

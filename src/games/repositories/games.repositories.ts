@@ -78,23 +78,44 @@ export class GamesRepository {
 
   async updateGame(gameId: string, gameData: Partial<CreateGame>) {
     try {
-      const result = await this.db
+      const [result] = await this.db
         .update(schemas.games)
         .set(gameData)
         .where(eq(schemas.games.gameId, gameId))
         .returning();
 
-      if (result.length === 0) {
+      if (!result) {
         throw new NotFoundException(`Game with ID "${gameId}" not found`);
       }
 
-      return result[0];
+      return result;
     } catch (error) {
       console.error('Error updating game:', error);
       if (error instanceof NotFoundException) {
         throw error;
       }
       throw new InternalServerErrorException('Failed to update game');
+    }
+  }
+
+  async findGameById(gameId: string) {
+    try {
+      const [result] = await this.db
+        .select()
+        .from(schemas.games)
+        .where(eq(schemas.games.gameId, gameId));
+
+      if (!result) {
+        throw new NotFoundException(`Game with ID "${gameId}" not found`);
+      }
+      return result;
+    } catch (error) {
+      console.error('Error finding game by ID:', error);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (error.code === '22P02') {
+        throw new NotFoundException(`Game with ID "${gameId}" not found`);
+      }
+      throw new InternalServerErrorException('Failed to find game by ID');
     }
   }
 }

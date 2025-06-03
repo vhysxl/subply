@@ -21,8 +21,24 @@ export class ProductRepository {
   async getProductInfo(gameId: string, value: number) {
     try {
       const product = await this.db
-        .select()
+        .select({
+          productId: schemas.productsTable.productId,
+          code: schemas.productsTable.code,
+          value: schemas.productsTable.value,
+          status: schemas.productsTable.status,
+          type: schemas.productsTable.type,
+          price: schemas.productsTable.price,
+          gameId: schemas.productsTable.gameId,
+          createdAt: schemas.productsTable.createdAt,
+          updatedAt: schemas.productsTable.updatedAt,
+
+          gameName: schemas.games.name,
+        })
         .from(schemas.productsTable)
+        .innerJoin(
+          schemas.games,
+          eq(schemas.productsTable.gameId, schemas.games.gameId),
+        )
         .where(
           and(
             eq(schemas.productsTable.gameId, gameId),
@@ -52,13 +68,14 @@ export class ProductRepository {
     try {
       const rawData = await this.db
         .select({
+          productId: schemas.productsTable.productId,
           type: schemas.productsTable.type,
           value: schemas.productsTable.value,
           price: schemas.productsTable.price,
           gameId: schemas.productsTable.gameId,
           gameName: schemas.games.name,
           isPopular: schemas.games.isPopular,
-          curreny: schemas.games.currency,
+          currency: schemas.games.currency,
           imageUrl: schemas.games.imageUrl,
           stock: count(),
         })
@@ -69,6 +86,7 @@ export class ProductRepository {
         )
         .where(eq(schemas.productsTable.status, 'available'))
         .groupBy(
+          schemas.productsTable.productId,
           schemas.productsTable.value,
           schemas.productsTable.type,
           schemas.productsTable.price,
@@ -86,13 +104,14 @@ export class ProductRepository {
 
       const data: Products[] = rawData.map((item) => {
         const product = {
+          productId: item.productId,
           type: item.type,
           value: Number(item.value),
           price: Number(item.price),
           gameId: item.gameId,
           gameName: item.gameName,
           isPopular: item.isPopular,
-          currency: item.curreny,
+          currency: item.currency,
           imageUrl: item.imageUrl,
         };
 
@@ -154,24 +173,82 @@ export class ProductRepository {
 
   async deleteProduct(productId: string) {
     try {
-      const result = await this.db
+      const [result] = await this.db
         .delete(schemas.productsTable)
         .where(eq(schemas.productsTable.productId, productId))
         .returning();
 
-      console.log(result);
-
-      if (result.length === 0) {
-        throw new NotFoundException('Product not found');
+      if (!result) {
+        throw new NotFoundException(`Product with ID "${productId}" not found`);
       }
 
-      return true;
+      const { value, price, ...rest } = result;
+      const convertedResult = {
+        ...rest,
+        value: Number(value),
+        price: Number(price),
+      };
+
+      return convertedResult;
     } catch (error) {
       console.error('Error deleting product:', error);
       if (error instanceof NotFoundException) {
         throw error;
       }
       throw new InternalServerErrorException('Error deleting product');
+    }
+  }
+
+  async findProductById(productId: string) {
+    try {
+      const [product] = await this.db
+        .select()
+        .from(schemas.productsTable)
+        .where(eq(schemas.productsTable.productId, productId));
+
+      if (!product) {
+        throw new NotFoundException(`Product with ID "${productId}" not found`);
+      }
+
+      return product;
+    } catch (error) {
+      console.error('Error finding product by ID:', error);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (error.code === '22P02') {
+        throw new NotFoundException(`Product with ID "${productId}" not found`);
+      }
+      throw new InternalServerErrorException('Error finding product by ID');
+    }
+  }
+
+  async updateProduct(updateProductData: Partial<Products>, productId: string) {
+    try {
+      const { value, price } = updateProductData;
+
+      const preparedData = {
+        ...updateProductData,
+        value: value !== undefined ? String(value) : undefined,
+        price: price !== undefined ? String(price) : undefined,
+      };
+
+      const [result] = await this.db
+        .update(schemas.productsTable)
+        .set(preparedData)
+        .where(eq(schemas.productsTable.productId, productId))
+        .returning();
+
+      const { value: val, price: prc, ...rest } = result;
+
+      const convertedResult = {
+        ...rest,
+        value: Number(val),
+        price: Number(prc),
+      };
+
+      return convertedResult;
+    } catch (error) {
+      console.error('Error updating product:', error);
+      throw new InternalServerErrorException('Error updating product woi');
     }
   }
 }
