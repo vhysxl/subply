@@ -72,11 +72,7 @@ export const ordersTable = pgTable('orders', {
   userId: uuid('user_id')
     .notNull()
     .references(() => usersTable.userId, { onDelete: 'cascade' }),
-  productId: uuid('product_id')
-    .references(() => productsTable.productId, {
-      onDelete: 'restrict',
-    })
-    .notNull(),
+  productIds: varchar('product_ids', { length: 1000 }).notNull(),
   target: varchar('target', { length: 255 }),
   status: orderStatusEnum('status').notNull().default('pending'),
   priceTotal: numeric('price_total', { precision: 10, scale: 2 }).notNull(),

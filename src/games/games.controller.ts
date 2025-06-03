@@ -27,29 +27,22 @@ export class GamesController {
 
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.admin)
+  @Roles(Role.admin, Role.superadmin)
   createGame(@Body() createGameDto: CreateGameDto) {
     return this.gamesService.createGames(createGameDto);
   }
 
   @Patch(':id')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.admin || Role.superadmin)
+  @Roles(Role.admin, Role.superadmin)
   update(@Param('id') gameId: string, @Body() updateGameDto: UpdateGameDto) {
     return this.gamesService.updateGame(gameId, updateGameDto);
   }
 
   @Delete(':id')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.admin)
+  @Roles(Role.admin, Role.superadmin)
   remove(@Param('id') gameId: string) {
     return this.gamesService.removeGame(gameId);
   }
-
-  // later, you can uncomment these methods if needed
-
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.gamesService.findOne(+id);
-  // }
 }

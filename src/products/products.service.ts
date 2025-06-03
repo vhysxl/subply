@@ -26,6 +26,8 @@ export class ProductsService {
       createProductDto.gameId,
     );
 
+    console.log(availableGame);
+
     if (!availableGame) {
       throw new NotFoundException('Game not found');
     }
@@ -46,22 +48,24 @@ export class ProductsService {
 
   async updateProduct(
     updateProductData: updateProductDto,
-    productId: string,
+    productIds: string,
   ): Promise<{
     success: boolean;
     message: string;
     data: Partial<Products>;
   }> {
     const existingProduct =
-      await this.ProductRepository.findProductById(productId);
+      await this.ProductRepository.findProductById(productIds);
 
     if (!existingProduct) {
       throw new NotFoundException('Product not found');
     }
 
+    const productIdsToChange = [productIds];
+
     const updatedProduct = await this.ProductRepository.updateProduct(
       updateProductData,
-      productId,
+      productIdsToChange,
     );
 
     if (!updatedProduct) {

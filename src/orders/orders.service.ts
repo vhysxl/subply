@@ -13,6 +13,7 @@ import { ProductRepository } from 'src/products/repositories/product.repositorie
 import { OrderDto } from './dto/create-order.dto';
 import { GetOrderDto } from './dto/get-order.dto';
 import { UserRepository } from 'src/users/repositories/user.repositories';
+import { Products } from 'src/products/interface';
 
 @Injectable()
 export class OrdersService {
@@ -106,11 +107,36 @@ export class OrdersService {
       }
     } catch (error) {
       console.error('Error in payment, fallback deleting order...', error);
+
+      // Perbaikan di sini - parse productIds dengan benar
+      let productIds: string[] = [];
+
+      try {
+        // Jika order.productIds adalah string JSON, parse dulu
+        if (typeof order.productIds === 'string') {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          productIds = JSON.parse(order.productIds);
+        }
+        // Jika sudah array, langsung gunakan
+        else if (Array.isArray(order.productIds)) {
+          productIds = order.productIds;
+        }
+        // Fallback jika ada single productId (backward compatibility)
+        else if (order.productIds) {
+          productIds = [order.productIds];
+        }
+      } catch (parseError) {
+        console.error('Error parsing productIds:', parseError);
+      }
+
       await this.orderRepository.fallbackDeleteOrder(
         order.orderId,
-        order.productId || '',
+        productIds,
         order.type,
       );
+
+      console.log('successfully fallback');
+
       throw new InternalServerErrorException('Failed to process payment');
     }
 
@@ -220,6 +246,18 @@ export class OrdersService {
     const order = await this.orderRepository.cancelOder(orderId);
     if (!order) {
       throw new InternalServerErrorException('Failed to cancel order');
+    }
+
+    if (order.type === 'voucher') {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const productIds: string[] = JSON.parse(order.productIds || '[]');
+      const updateData: Partial<Products> = {
+        status: 'available',
+      };
+
+      await this.productRepository.updateProduct(updateData, productIds);
+
+      console.log(`Voucher ${order.productIds} returned to available status`);
     }
     return {
       success: true,

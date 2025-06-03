@@ -8,7 +8,7 @@ import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
 import * as schemas from 'schemas/index';
 import { orderRequest } from '../interface';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 
 @Injectable()
 export class OrderRepository {
@@ -27,7 +27,7 @@ export class OrderRepository {
   }: orderRequest) {
     try {
       const order = await this.db.transaction(async (trx) => {
-        const [voucherWithGame] = await trx
+        const availableVouchers = await trx
           .select({
             product: schemas.productsTable,
             gameName: schemas.games.name,
@@ -45,13 +45,17 @@ export class OrderRepository {
               eq(schemas.productsTable.value, String(value)),
             ),
           )
-          .limit(1);
+          .limit(quantity);
 
-        if (!voucherWithGame) {
-          throw new NotFoundException('No available vouchers found');
+        if (availableVouchers.length < quantity) {
+          throw new NotFoundException(
+            `Only ${availableVouchers.length} vouchers available, but ${quantity} requested`,
+          );
         }
 
-        const totalPrice = Number(voucherWithGame.product.price) * quantity;
+        const totalPrice =
+          Number(availableVouchers[0].product.price) * quantity;
+        const productIds = availableVouchers.map((v) => v.product.productId);
 
         const [newOrder] = await trx
           .insert(schemas.ordersTable)
@@ -59,14 +63,14 @@ export class OrderRepository {
             userId: userId,
             customerName: customerName,
             email: email,
-            productId: voucherWithGame.product.productId,
-            value: voucherWithGame.product.value,
+            productIds: JSON.stringify(productIds),
+            value: availableVouchers[0].product.value,
             priceTotal: String(totalPrice),
-            type: voucherWithGame.product.type,
+            type: availableVouchers[0].product.type,
             status: 'pending',
             target: '',
             quantity: String(quantity),
-            gameName: voucherWithGame.gameName,
+            gameName: availableVouchers[0].gameName,
           })
           .returning();
 
@@ -76,12 +80,7 @@ export class OrderRepository {
             status: 'used',
             updatedAt: new Date(),
           })
-          .where(
-            eq(
-              schemas.productsTable.productId,
-              voucherWithGame.product.productId,
-            ),
-          );
+          .where(inArray(schemas.productsTable.productId, productIds));
 
         return newOrder;
       });
@@ -94,6 +93,8 @@ export class OrderRepository {
       };
     } catch (error) {
       console.error('Error creating quick order:', error);
+
+      if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(
         'Failed to create order, please try again later',
       );
@@ -144,7 +145,7 @@ export class OrderRepository {
             userId: userId,
             customerName: customerName,
             email: email,
-            productId: topupWithGame.product.productId,
+            productIds: topupWithGame.product.productId,
             value: topupWithGame.product.value,
             priceTotal: String(totalPrice),
             type: topupWithGame.product.type,
@@ -166,6 +167,9 @@ export class OrderRepository {
       };
     } catch (error) {
       console.error('Error creating quick order:', error);
+
+      if (error instanceof NotFoundException) throw error;
+
       throw new InternalServerErrorException(
         'Failed to create order, please try again later',
       );
@@ -174,14 +178,14 @@ export class OrderRepository {
 
   async fallbackDeleteOrder(
     orderId: string,
-    voucherId: string,
+    voucherIds: string[],
     type: 'topup' | 'voucher',
   ) {
     try {
       await this.db.transaction(async (trx) => {
         await trx
           .delete(schemas.ordersTable)
-          .where(eq(schemas.ordersTable.productId, orderId));
+          .where(eq(schemas.ordersTable.orderId, orderId));
 
         if (type === 'voucher') {
           await trx
@@ -190,7 +194,7 @@ export class OrderRepository {
               status: 'available',
               updatedAt: new Date(),
             })
-            .where(eq(schemas.productsTable.productId, voucherId));
+            .where(inArray(schemas.productsTable.productId, voucherIds));
         }
       });
     } catch (error) {
@@ -271,6 +275,25 @@ export class OrderRepository {
 
   async getOrderDetails(orderId: string, userId: string) {
     try {
+      // Pertama ambil order untuk dapat productIds
+      const [orderResult] = await this.db
+        .select()
+        .from(schemas.ordersTable)
+        .where(
+          and(
+            eq(schemas.ordersTable.orderId, orderId),
+            eq(schemas.ordersTable.userId, userId),
+          ),
+        );
+
+      if (!orderResult) {
+        throw new NotFoundException('Order not found');
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const productIds = JSON.parse(orderResult.productIds);
+
+      // Kemudian ambil detail dengan products
       const [result] = await this.db
         .select({
           orderId: schemas.ordersTable.orderId,
@@ -284,7 +307,7 @@ export class OrderRepository {
           gameName: schemas.ordersTable.gameName,
           quantity: schemas.ordersTable.quantity,
           paymentLink: schemas.paymentsTable.paymentLink,
-          voucherCode: schemas.productsTable.code,
+          voucherCodes: sql<string[]>`array_agg(${schemas.productsTable.code})`,
         })
         .from(schemas.ordersTable)
         .leftJoin(
@@ -293,13 +316,13 @@ export class OrderRepository {
         )
         .leftJoin(
           schemas.productsTable,
-          eq(schemas.ordersTable.productId, schemas.productsTable.productId),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          inArray(schemas.productsTable.productId, productIds),
         )
-        .where(
-          and(
-            eq(schemas.ordersTable.orderId, orderId),
-            eq(schemas.ordersTable.userId, userId),
-          ),
+        .where(eq(schemas.ordersTable.orderId, orderId))
+        .groupBy(
+          schemas.ordersTable.orderId,
+          schemas.paymentsTable.paymentLink,
         );
 
       if (!result) {
@@ -313,18 +336,29 @@ export class OrderRepository {
         quantity: Number(result.quantity),
       };
 
+      const { voucherCodes, ...rest } = baseResult;
+
+      if (baseResult.type === 'voucher' && baseResult.status === 'completed') {
+        return {
+          ...rest,
+          paymentLink:
+            result.status === 'completed' ||
+            result.status === 'processed' ||
+            result.status === 'cancelled'
+              ? null
+              : result.paymentLink,
+          voucherCodes,
+        };
+      }
+
       return {
-        ...baseResult,
+        ...rest,
         paymentLink:
           result.status === 'completed' ||
           result.status === 'processed' ||
           result.status === 'cancelled'
             ? null
             : result.paymentLink,
-        voucherCode:
-          result.type === 'voucher' && result.status === 'completed'
-            ? result.voucherCode
-            : null,
       };
     } catch (error) {
       console.error(error);
@@ -387,8 +421,10 @@ export class OrderRepository {
         .where(eq(schemas.ordersTable.orderId, orderId))
         .returning();
 
+      console.log(result);
+
       if (!result) {
-        throw new NotFoundException('Product not found');
+        throw new NotFoundException('Orders not found');
       }
 
       const { value, quantity, priceTotal } = result;

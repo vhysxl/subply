@@ -28,8 +28,8 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  // @UseGuards(AuthGuard, RolesGuard)
-  // @Roles(Role.admin, Role.superadmin)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.admin, Role.superadmin)
   remove(@Param('id') productId: string) {
     return this.productsService.deleteProduct(productId);
   }
@@ -40,8 +40,8 @@ export class ProductsController {
   }
 
   @Patch(':id')
-  // @UseGuards(AuthGuard, RolesGuard)
-  // @Roles(Role.admin, Role.superadmin)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.admin, Role.superadmin)
   update(
     @Param('id') productId: string,
     @Body() updateProductDto: updateProductDto,

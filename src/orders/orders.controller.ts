@@ -16,6 +16,9 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { GetOrderDto } from './dto/get-order.dto';
 import { RequestWithUser } from 'src/auth/interfaces';
 import { UpdateOrderStatusDto } from './dto/update-order.dto';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Role } from 'src/common/constants/role.enum';
+import { Roles } from 'src/common/decorator/role.decorator';
 
 @Controller('orders')
 export class OrdersController {
@@ -48,6 +51,7 @@ export class OrdersController {
     return this.ordersService.getOrderDetails(orderId, userId);
   }
 
+  @UseGuards(AuthGuard)
   @Patch(':orderId/cancel')
   cancelOrder(@Param('orderId') orderId: string) {
     return this.ordersService.cancelOrder(orderId);
@@ -55,6 +59,8 @@ export class OrdersController {
 
   //admin stuff
   @Patch(':orderId/update')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.admin, Role.superadmin)
   updateOrderStatus(
     @Param('orderId') orderId: string,
     @Body() updateData: UpdateOrderStatusDto,

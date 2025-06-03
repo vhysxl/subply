@@ -116,16 +116,18 @@ export class PaymentsService {
         result.type === 'voucher' &&
         (result.status === 'failed' || result.status === 'cancelled')
       ) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const productIds: string[] = JSON.parse(result.productIds || '[]');
+
         const updateData: Partial<Products> = {
           status: 'available',
         };
 
-        await this.productRepositories.updateProduct(
-          updateData,
-          result.productId,
-        );
+        await this.productRepositories.updateProduct(updateData, productIds);
 
-        console.log(`Voucher ${result.productId} returned to available status`);
+        console.log(
+          `Voucher ${result.productIds} returned to available status`,
+        );
       }
 
       return result;

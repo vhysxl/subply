@@ -8,7 +8,7 @@ import {
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
 import * as schemas from 'schemas/index';
-import { eq, count, and } from 'drizzle-orm';
+import { eq, count, and, inArray } from 'drizzle-orm';
 import { Products } from '../interface';
 import { CreateProductDto } from '../dto/create-products.dto';
 
@@ -221,7 +221,10 @@ export class ProductRepository {
     }
   }
 
-  async updateProduct(updateProductData: Partial<Products>, productId: string) {
+  async updateProduct(
+    updateProductData: Partial<Products>,
+    productIds: string[],
+  ) {
     try {
       const { value, price } = updateProductData;
 
@@ -234,7 +237,7 @@ export class ProductRepository {
       const [result] = await this.db
         .update(schemas.productsTable)
         .set(preparedData)
-        .where(eq(schemas.productsTable.productId, productId))
+        .where(inArray(schemas.productsTable.productId, productIds))
         .returning();
 
       const { value: val, price: prc, ...rest } = result;

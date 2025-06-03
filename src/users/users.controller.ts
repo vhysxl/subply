@@ -22,7 +22,7 @@ export class UsersController {
 
   @Get()
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.admin)
+  @Roles(Role.admin, Role.superadmin)
   findAll(@Query() query: GetUserDto) {
     const { page } = query;
     const limit = 5;
@@ -31,8 +31,8 @@ export class UsersController {
   }
 
   @Patch(':userId')
-  // @UseGuards(AuthGuard, RolesGuard)
-  // @Roles(Role.admin, Role.superadmin)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.superadmin)
   updateUser(
     @Param('userId') userId: string,
     @Body() updateUserDto: updateUserDto,
@@ -41,8 +41,8 @@ export class UsersController {
   }
 
   @Delete(':userId')
-  // @UseGuards(AuthGuard, RolesGuard)
-  // @Roles(Role.admin, Role.superadmin)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.superadmin)
   deleteUser(@Param('userId') userId: string) {
     return this.usersService.deleteUser(userId);
   }
