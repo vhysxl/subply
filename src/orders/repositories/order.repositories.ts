@@ -8,7 +8,7 @@ import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
 import * as schemas from 'schemas/index';
 import { orderRequest } from '../interface';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 
 @Injectable()
 export class OrderRepository {
@@ -445,6 +445,28 @@ export class OrderRepository {
       throw new InternalServerErrorException(
         'Failed to cancel order, Please try again later',
       );
+    }
+  }
+
+  async getAllOrders(page: number = 1, limit: number = 20) {
+    try {
+      const offset = (page - 1) * limit;
+      const orders = await this.db
+        .select()
+        .from(schemas.ordersTable)
+        .limit(limit)
+        .offset(offset)
+        .orderBy(desc(schemas.ordersTable.createdAt));
+
+      return orders.map((order) => ({
+        ...order,
+        value: Number(order.value),
+        priceTotal: Number(order.priceTotal),
+        quantity: Number(order.quantity),
+      }));
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      throw new InternalServerErrorException('Error fetching all users');
     }
   }
 }

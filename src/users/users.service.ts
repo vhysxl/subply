@@ -9,10 +9,14 @@ import { UserRepository } from './repositories/user.repositories';
 import * as bcrypt from 'bcryptjs';
 import { AuthInterface } from 'src/auth/interfaces';
 import { User } from './interfaces';
+import { AuditLogRepository } from 'src/audit-log/repositories/audit-log.repository';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly auditLogRepository: AuditLogRepository,
+  ) {}
 
   async createUser(user: AuthInterface): Promise<{
     success: boolean;
@@ -99,6 +103,7 @@ export class UsersService {
   async updateUser(
     updateData: Partial<User>,
     userId: string,
+    adminId: string,
   ): Promise<{
     success: boolean;
     message: string;
@@ -119,6 +124,11 @@ export class UsersService {
       throw new InternalServerErrorException('Failed to update user');
     }
 
+    await this.auditLogRepository.createLog(
+      adminId,
+      `updated user ${user.userId}`,
+    );
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...result } = updatedData;
 
@@ -129,9 +139,13 @@ export class UsersService {
     };
   }
 
-  async deleteUser(userId: string): Promise<{
+  async deleteUser(
+    userId: string,
+    adminId: string,
+  ): Promise<{
     success: boolean;
     message: string;
+
     data: Omit<User, 'password'>;
   }> {
     const user = await this.userRepository.findUserById(userId);
@@ -148,10 +162,49 @@ export class UsersService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...result } = deletedUser;
 
+    await this.auditLogRepository.createLog(
+      adminId,
+      `Updated product ${user.userId}`,
+    );
+
     return {
       success: true,
       message: 'User deleted successfully',
       data: result,
+    };
+  }
+
+  async findOneUser(userId: string): Promise<{
+    success: boolean;
+    message: string;
+    data: Omit<User, 'password'>;
+  }> {
+    const user = await this.userRepository.findUserById(userId);
+    if (!user) throw new NotFoundException('User not found');
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password: _, ...rest } = user;
+
+    return {
+      success: true,
+      message: 'Success fetching user',
+      data: rest,
+    };
+  }
+
+  async searchUserByName(name: string): Promise<{
+    success: true;
+    message: string;
+    data: Omit<User, 'password'>[];
+  }> {
+    const users = await this.userRepository.searchUserByName(name);
+
+    if (users.length === 0) throw new NotFoundException('User not found');
+
+    return {
+      success: true,
+      message: 'Success finding user',
+      data: users,
     };
   }
 }

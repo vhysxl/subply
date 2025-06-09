@@ -14,6 +14,7 @@ import { OrderDto } from './dto/create-order.dto';
 import { GetOrderDto } from './dto/get-order.dto';
 import { UserRepository } from 'src/users/repositories/user.repositories';
 import { Products } from 'src/products/interface';
+import { AuditLogRepository } from 'src/audit-log/repositories/audit-log.repository';
 
 @Injectable()
 export class OrdersService {
@@ -22,6 +23,7 @@ export class OrdersService {
     private readonly paymentService: PaymentsService,
     private readonly productRepository: ProductRepository,
     private readonly usersRepository: UserRepository,
+    private readonly auditLogRepository: AuditLogRepository,
   ) {}
 
   async createOrder(
@@ -220,6 +222,7 @@ export class OrdersService {
   async updateOrderStatus(
     orderId: string,
     status: 'pending' | 'completed' | 'cancelled' | 'processed' | 'failed',
+    adminId: string,
   ): Promise<{
     success: boolean;
     message: string;
@@ -230,6 +233,11 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException('Order not found');
     }
+
+    await this.auditLogRepository.createLog(
+      adminId,
+      `Changed status to ${status} for order ${orderId}`,
+    );
 
     return {
       success: true,
@@ -263,6 +271,27 @@ export class OrdersService {
       success: true,
       message: 'success cancelling order',
       data: order,
+    };
+  }
+
+  async getAllOrders(
+    page: number,
+    limit: number,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: Order[];
+  }> {
+    const orders = await this.orderRepository.getAllOrders(page, limit);
+
+    if (!orders) {
+      throw new InternalServerErrorException('failed to fetch users');
+    }
+
+    return {
+      success: true,
+      message: 'Users fetched successfully',
+      data: orders,
     };
   }
 }

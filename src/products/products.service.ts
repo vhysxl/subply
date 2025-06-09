@@ -8,16 +8,21 @@ import { ProductRepository } from './repositories/product.repositories';
 import { CreateProductDto } from './dto/create-products.dto';
 import { updateProductDto } from './dto/update-products.dto';
 import { GamesRepository } from 'src/games/repositories/games.repositories';
+import { AuditLogRepository } from 'src/audit-log/repositories/audit-log.repository';
 
 @Injectable()
 export class ProductsService {
   constructor(
     private readonly ProductRepository: ProductRepository,
     private readonly GamesRepository: GamesRepository,
+    private readonly AuditLogReporsitory: AuditLogRepository,
   ) {}
 
   //Admin stuff
-  async createProduct(createProductDto: CreateProductDto): Promise<{
+  async createProduct(
+    createProductDto: CreateProductDto,
+    adminId: string,
+  ): Promise<{
     success: boolean;
     message: string;
     data: NewlyCreatedProduct;
@@ -39,6 +44,11 @@ export class ProductsService {
       throw new InternalServerErrorException('Product failed to create');
     }
 
+    await this.AuditLogReporsitory.createLog(
+      adminId,
+      `Created new products for game ${availableGame.name}`,
+    );
+
     return {
       success: true,
       message: 'Product created successfully',
@@ -49,6 +59,7 @@ export class ProductsService {
   async updateProduct(
     updateProductData: updateProductDto,
     productIds: string,
+    adminId: string,
   ): Promise<{
     success: boolean;
     message: string;
@@ -72,6 +83,11 @@ export class ProductsService {
       throw new InternalServerErrorException('Failed to update product');
     }
 
+    await this.AuditLogReporsitory.createLog(
+      adminId,
+      `Updated product ${existingProduct.code}`,
+    );
+
     return {
       success: true,
       message: 'Product updated successfully',
@@ -81,12 +97,25 @@ export class ProductsService {
 
   async deleteProduct(
     productId: string,
+    adminId: string, // tambah ini
   ): Promise<{ success: boolean; message: string; data: Partial<Products> }> {
+    const existingProduct =
+      await this.ProductRepository.findProductById(productId);
+
+    if (!existingProduct) {
+      throw new NotFoundException('Product not found');
+    }
+
     const result = await this.ProductRepository.deleteProduct(productId);
 
     if (!result) {
       throw new InternalServerErrorException('Failed to delete product');
     }
+
+    await this.AuditLogReporsitory.createLog(
+      adminId,
+      `Deleted product ${existingProduct.code}`,
+    );
 
     return {
       success: true,
@@ -115,8 +144,4 @@ export class ProductsService {
       },
     };
   }
-
-  // findOne(id: number) {
-  //   return `This action returns a #${id} product`;
-  // }
 }

@@ -19,6 +19,8 @@ import { UpdateOrderStatusDto } from './dto/update-order.dto';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Role } from 'src/common/constants/role.enum';
 import { Roles } from 'src/common/decorator/role.decorator';
+import { GetUserId } from 'src/common/decorator/user.decorator';
+import { GetAllOrderDto } from './dto/get-all-order.dto';
 
 @Controller('orders')
 export class OrdersController {
@@ -36,6 +38,16 @@ export class OrdersController {
   @Get()
   getOrders(@Query() query: GetOrderDto) {
     return this.ordersService.findOrdersByUser(query);
+  }
+
+  @Get('allorder')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.admin, Role.superadmin)
+  getAllOrders(@Query() query: GetAllOrderDto) {
+    const { page } = query;
+    const limit = 10;
+
+    return this.ordersService.getAllOrders(page, limit);
   }
 
   @UseGuards(AuthGuard)
@@ -64,7 +76,12 @@ export class OrdersController {
   updateOrderStatus(
     @Param('orderId') orderId: string,
     @Body() updateData: UpdateOrderStatusDto,
+    @GetUserId() adminId: string,
   ) {
-    return this.ordersService.updateOrderStatus(orderId, updateData.status);
+    return this.ordersService.updateOrderStatus(
+      orderId,
+      updateData.status,
+      adminId,
+    );
   }
 }

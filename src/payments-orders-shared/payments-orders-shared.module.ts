@@ -8,5 +8,6 @@ import { PaymentsOrdersSharedRepositories } from './repositories/payments-orders
   imports: [DatabaseModule],
   controllers: [PaymentsOrdersSharedController],
   providers: [PaymentsOrdersSharedService, PaymentsOrdersSharedRepositories],
+  exports: [PaymentsOrdersSharedService, PaymentsOrdersSharedRepositories],
 })
 export class PaymentsOrdersSharedModule {}

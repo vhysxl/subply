@@ -26,5 +26,5 @@ export interface NewlyCreatedProduct {
 }
 
 export interface ProductsList {
-  products: Products[];
+  products: Partial<Products>[];
 }

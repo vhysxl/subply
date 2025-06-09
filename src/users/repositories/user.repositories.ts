@@ -8,7 +8,7 @@ import {
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
 import * as schemas from 'schemas/index';
-import { eq } from 'drizzle-orm';
+import { desc, eq, ilike } from 'drizzle-orm';
 import { AuthInterface } from 'src/auth/interfaces';
 import { User } from '../interfaces';
 
@@ -25,12 +25,40 @@ export class UserRepository {
         .select()
         .from(schemas.usersTable)
         .limit(limit)
-        .offset(offset);
+        .offset(offset)
+        .orderBy(desc(schemas.usersTable.createdAt));
 
-      return users;
+      const sanitizedUsers = users.map((user) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { password, ...rest } = user; // hapus password
+        return rest;
+      });
+
+      return sanitizedUsers;
     } catch (error) {
       console.error('Error fetching all users:', error);
       throw new InternalServerErrorException('Error fetching all users');
+    }
+  }
+
+  async searchUserByName(name: string) {
+    try {
+      const users = await this.db
+        .select()
+        .from(schemas.usersTable)
+        .where(ilike(schemas.usersTable.name, `%${name}`));
+
+      const usersSanitized = users.map((user) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { password, ...rest } = user;
+
+        return rest;
+      });
+
+      return usersSanitized;
+    } catch (error) {
+      console.error('Error finding user:', error);
+      throw new InternalServerErrorException('Error finding users');
     }
   }
 

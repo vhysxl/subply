@@ -5,10 +5,12 @@ import { GamesController } from './games.controller';
 import { DatabaseModule } from 'src/database/database.module';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { GamesRepository } from './repositories/games.repositories';
+import { AuditLogModule } from 'src/audit-log/audit-log.module';
 
 @Module({
-  imports: [DatabaseModule, JwtModule],
+  imports: [DatabaseModule, JwtModule, AuditLogModule],
   controllers: [GamesController],
   providers: [GamesService, GamesRepository, RolesGuard],
+  exports: [GamesRepository],
 })
 export class GamesModule {}

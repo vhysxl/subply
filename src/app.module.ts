@@ -12,6 +12,7 @@ import { PaymentsOrdersSharedModule } from './payments-orders-shared/payments-or
 import { JwtModule } from '@nestjs/jwt';
 import { GamesModule } from './games/games.module';
 import { UploadModule } from './upload/upload.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { UploadModule } from './upload/upload.module';
     PaymentsOrdersSharedModule,
     GamesModule,
     UploadModule,
+    AuditLogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

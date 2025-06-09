@@ -15,6 +15,7 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorator/role.decorator';
 import { Role } from 'src/common/constants/role.enum';
+import { GetUserId } from 'src/common/decorator/user.decorator';
 
 @Controller('games')
 export class GamesController {
@@ -28,21 +29,28 @@ export class GamesController {
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.admin, Role.superadmin)
-  createGame(@Body() createGameDto: CreateGameDto) {
-    return this.gamesService.createGames(createGameDto);
+  createGame(
+    @Body() createGameDto: CreateGameDto,
+    @GetUserId() adminId: string,
+  ) {
+    return this.gamesService.createGames(createGameDto, adminId);
   }
 
   @Patch(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.admin, Role.superadmin)
-  update(@Param('id') gameId: string, @Body() updateGameDto: UpdateGameDto) {
-    return this.gamesService.updateGame(gameId, updateGameDto);
+  update(
+    @Param('id') gameId: string,
+    @Body() updateGameDto: UpdateGameDto,
+    @GetUserId() adminId: string,
+  ) {
+    return this.gamesService.updateGame(gameId, updateGameDto, adminId);
   }
 
   @Delete(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.admin, Role.superadmin)
-  remove(@Param('id') gameId: string) {
-    return this.gamesService.removeGame(gameId);
+  remove(@Param('id') gameId: string, @GetUserId() adminId: string) {
+    return this.gamesService.removeGame(gameId, adminId);
   }
 }

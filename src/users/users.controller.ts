@@ -15,6 +15,8 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Role } from 'src/common/constants/role.enum';
 import { Roles } from 'src/common/decorator/role.decorator';
 import { updateUserDto } from './dto/update-user.dto';
+import { SearchUserDto } from './dto/search-dto';
+import { GetUserId } from 'src/common/decorator/user.decorator';
 
 @Controller('users')
 export class UsersController {
@@ -30,20 +32,35 @@ export class UsersController {
     return this.usersService.findAllUsers(page, limit);
   }
 
+  @Get('/search')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.superadmin, Role.admin)
+  findOneByName(@Query('name') data: SearchUserDto) {
+    return this.usersService.searchUserByName(data.name);
+  }
+
   @Patch(':userId')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.superadmin)
   updateUser(
     @Param('userId') userId: string,
     @Body() updateUserDto: updateUserDto,
+    @GetUserId() adminId: string,
   ) {
-    return this.usersService.updateUser(updateUserDto, userId);
+    return this.usersService.updateUser(updateUserDto, userId, adminId);
   }
 
   @Delete(':userId')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.superadmin)
-  deleteUser(@Param('userId') userId: string) {
-    return this.usersService.deleteUser(userId);
+  deleteUser(@Param('userId') userId: string, @GetUserId() adminId: string) {
+    return this.usersService.deleteUser(userId, adminId);
+  }
+
+  @Get(':userId')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.superadmin, Role.admin)
+  findOne(@Param('userId') userId: string) {
+    return this.usersService.findOneUser(userId);
   }
 }
