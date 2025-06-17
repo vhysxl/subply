@@ -35,19 +35,29 @@ export class UsersController {
   @Get('/search')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.superadmin, Role.admin)
-  findOneByName(@Query('name') data: SearchUserDto) {
+  findOneByName(@Query() data: SearchUserDto) {
+    console.log(data);
     return this.usersService.searchUserByName(data.name);
   }
 
-  @Patch(':userId')
+  @Patch('/admin/:userId')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.superadmin)
-  updateUser(
+  updateUserAdmin(
     @Param('userId') userId: string,
     @Body() updateUserDto: updateUserDto,
     @GetUserId() adminId: string,
   ) {
     return this.usersService.updateUser(updateUserDto, userId, adminId);
+  }
+
+  @Patch(':userId')
+  @UseGuards(AuthGuard)
+  updateUser(
+    @Param('userId') userId: string,
+    @Body() updateUserDto: updateUserDto,
+  ) {
+    return this.usersService.updateUser(updateUserDto, userId);
   }
 
   @Delete(':userId')

@@ -103,7 +103,7 @@ export class UsersService {
   async updateUser(
     updateData: Partial<User>,
     userId: string,
-    adminId: string,
+    adminId?: string,
   ): Promise<{
     success: boolean;
     message: string;
@@ -124,10 +124,12 @@ export class UsersService {
       throw new InternalServerErrorException('Failed to update user');
     }
 
-    await this.auditLogRepository.createLog(
-      adminId,
-      `updated user ${user.userId}`,
-    );
+    if (adminId) {
+      await this.auditLogRepository.createLog(
+        adminId,
+        `updated user ${user.userId}`,
+      );
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...result } = updatedData;

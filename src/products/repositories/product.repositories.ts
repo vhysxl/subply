@@ -68,6 +68,7 @@ export class ProductRepository {
     try {
       const rawData = await this.db
         .select({
+          productId: schemas.productsTable.productId,
           type: schemas.productsTable.type,
           value: schemas.productsTable.value,
           price: schemas.productsTable.price,
@@ -85,6 +86,7 @@ export class ProductRepository {
         )
         .where(eq(schemas.productsTable.status, 'available'))
         .groupBy(
+          schemas.productsTable.productId,
           schemas.productsTable.value,
           schemas.productsTable.type,
           schemas.productsTable.price,
@@ -102,6 +104,7 @@ export class ProductRepository {
 
       const data: Partial<Products>[] = rawData.map((item) => {
         const product = {
+          productId: item.productId,
           type: item.type,
           value: Number(item.value),
           price: Number(item.price),
@@ -249,6 +252,55 @@ export class ProductRepository {
     } catch (error) {
       console.error('Error updating product:', error);
       throw new InternalServerErrorException('Error updating product woi');
+    }
+  }
+
+  //for admin
+  async getAllProductsIndividually() {
+    try {
+      const data = await this.db
+        .select({
+          productId: schemas.productsTable.productId,
+          type: schemas.productsTable.type,
+          value: schemas.productsTable.value,
+          price: schemas.productsTable.price,
+          gameId: schemas.productsTable.gameId,
+          status: schemas.productsTable.status,
+          code: schemas.productsTable.code,
+          gameName: schemas.games.name,
+          currency: schemas.games.currency,
+        })
+        .from(schemas.productsTable)
+        .innerJoin(
+          schemas.games,
+          eq(schemas.productsTable.gameId, schemas.games.gameId),
+        )
+        .orderBy(schemas.productsTable.value);
+
+      if (data.length === 0) {
+        return [];
+      }
+
+      const sanitizedData: Partial<Products>[] = data.map((item) => {
+        const product = {
+          productId: item.productId,
+          type: item.type,
+          value: Number(item.value),
+          price: Number(item.price),
+          gameId: item.gameId,
+          gameName: item.gameName,
+          currency: item.currency,
+          code: item.code,
+          status: item.status,
+        };
+
+        return product;
+      });
+
+      return sanitizedData;
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      throw new InternalServerErrorException('Error fetching products');
     }
   }
 }

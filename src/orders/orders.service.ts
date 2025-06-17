@@ -167,8 +167,6 @@ export class OrdersService {
       query.status,
     );
 
-    console.log(orders);
-
     if (orders.length === 0) {
       return {
         success: true,

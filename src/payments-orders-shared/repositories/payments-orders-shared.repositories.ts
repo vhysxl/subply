@@ -7,7 +7,7 @@ import {
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
 import * as schemas from 'schemas/index';
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 @Injectable()
 export class PaymentsOrdersSharedRepositories {
@@ -54,7 +54,35 @@ export class PaymentsOrdersSharedRepositories {
       return result;
     } catch (error) {
       console.error(error);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new InternalServerErrorException('Failed to update order');
+    }
+  }
+
+  async getPaidPendingOrders() {
+    try {
+      const [{ count }] = await this.db
+        .select({
+          count: sql`COUNT(*)`.as('count'),
+        })
+        .from(schemas.ordersTable)
+        .innerJoin(
+          schemas.paymentsTable,
+          eq(schemas.ordersTable.orderId, schemas.paymentsTable.orderId),
+        )
+        .where(
+          and(
+            eq(schemas.ordersTable.status, 'pending'),
+            eq(schemas.paymentsTable.status, 'paid'),
+          ),
+        );
+
+      return Number(count);
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException('Failed to count orders');
     }
   }
 }

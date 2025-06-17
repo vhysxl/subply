@@ -56,6 +56,22 @@ export class ProductsService {
     };
   }
 
+  async getProductIndividually(): Promise<{
+    success: true;
+    message: string;
+    data: ProductsList;
+  }> {
+    const products = await this.ProductRepository.getAllProductsIndividually();
+
+    return {
+      success: true,
+      message: 'Product list fetched successfully',
+      data: {
+        products,
+      },
+    };
+  }
+
   async updateProduct(
     updateProductData: updateProductDto,
     productIds: string,
@@ -130,11 +146,7 @@ export class ProductsService {
     message: string;
     data: ProductsList;
   }> {
-    const products = await this.ProductRepository.getAllProducts(); // vouchers: Voucher[]
-
-    if (products.length === 0) {
-      throw new NotFoundException('Products not found');
-    }
+    const products = await this.ProductRepository.getAllProducts();
 
     return {
       success: true,

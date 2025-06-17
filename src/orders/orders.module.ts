@@ -24,5 +24,6 @@ import { AuditLogModule } from 'src/audit-log/audit-log.module';
   ],
   controllers: [OrdersController],
   providers: [OrdersService, OrderRepository],
+  exports: [OrdersService, OrderRepository],
 })
 export class OrdersModule {}

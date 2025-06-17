@@ -21,6 +21,18 @@ import { GetUserId } from 'src/common/decorator/user.decorator';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  @Get()
+  findAll() {
+    return this.productsService.findAllProducts();
+  }
+
+  @Get('/productsAdmin')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.admin, Role.superadmin)
+  findAllIndividually() {
+    return this.productsService.getProductIndividually();
+  }
+
   @Post()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.admin, Role.superadmin)
@@ -51,10 +63,5 @@ export class ProductsController {
       productId,
       adminId,
     );
-  }
-
-  @Get()
-  findAll() {
-    return this.productsService.findAllProducts();
   }
 }

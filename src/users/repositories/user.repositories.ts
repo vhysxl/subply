@@ -8,9 +8,10 @@ import {
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
 import * as schemas from 'schemas/index';
-import { desc, eq, ilike } from 'drizzle-orm';
+import { desc, eq, gte, ilike, sql } from 'drizzle-orm';
 import { AuthInterface } from 'src/auth/interfaces';
 import { User } from '../interfaces';
+import { today } from 'src/common/constants/today.date';
 
 @Injectable()
 export class UserRepository {
@@ -46,7 +47,7 @@ export class UserRepository {
       const users = await this.db
         .select()
         .from(schemas.usersTable)
-        .where(ilike(schemas.usersTable.name, `%${name}`));
+        .where(ilike(schemas.usersTable.name, `${name}%`));
 
       const usersSanitized = users.map((user) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -169,6 +170,20 @@ export class UserRepository {
     } catch (error) {
       console.error('Error deleting user:', error);
       throw new InternalServerErrorException('Error deleting user');
+    }
+  }
+
+  async newUsersToday() {
+    try {
+      const [{ count }] = await this.db
+        .select({ count: sql`COUNT(*)`.as('count') })
+        .from(schemas.usersTable)
+        .where(gte(schemas.usersTable.createdAt, today));
+
+      return Number(count);
+    } catch (error) {
+      console.error('Error fetching new users today:', error);
+      throw new InternalServerErrorException('Error fetching new users today');
     }
   }
 }

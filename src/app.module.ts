@@ -13,6 +13,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { GamesModule } from './games/games.module';
 import { UploadModule } from './upload/upload.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
+import { StatisticsModule } from './statistics/statistics.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AuditLogModule } from './audit-log/audit-log.module';
     GamesModule,
     UploadModule,
     AuditLogModule,
+    StatisticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

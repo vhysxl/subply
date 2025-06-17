@@ -8,7 +8,8 @@ import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
 import * as schemas from 'schemas/index';
 import { orderRequest } from '../interface';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import { today } from 'src/common/constants/today.date';
 
 @Injectable()
 export class OrderRepository {
@@ -467,6 +468,41 @@ export class OrderRepository {
     } catch (error) {
       console.error('Error fetching all users:', error);
       throw new InternalServerErrorException('Error fetching all users');
+    }
+  }
+
+  async newOrdersToday() {
+    try {
+      const [{ count }] = await this.db
+        .select({ count: sql`COUNT(*)`.as('count') })
+        .from(schemas.ordersTable)
+        .where(gte(schemas.ordersTable.createdAt, today));
+
+      return Number(count);
+    } catch (error) {
+      console.error('Error fetching new orders today:', error);
+      throw new InternalServerErrorException('Error fetching new orders today');
+    }
+  }
+
+  async getDailyCompletedRevenue() {
+    try {
+      const [{ total }] = await this.db
+        .select({
+          total: sql`COALESCE(SUM(price_total), 0)`.as('total'),
+        })
+        .from(schemas.ordersTable)
+        .where(
+          and(
+            eq(schemas.ordersTable.status, 'completed'),
+            gte(schemas.ordersTable.createdAt, today),
+          ),
+        );
+
+      return Number(total);
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException('Failed to sum completed revenue');
     }
   }
 }
