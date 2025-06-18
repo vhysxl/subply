@@ -14,6 +14,10 @@ export interface Order {
   quantity: number;
 }
 
+export interface adminOrders extends Order {
+  paymentStatus: string | null;
+}
+
 export interface orderRequest {
   userId: string;
   gameId: string;

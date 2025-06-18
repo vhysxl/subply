@@ -6,7 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { OrderRepository } from './repositories/order.repositories';
-import { GetOrderDetails, Order, OrdersDataByUser } from './interface';
+import {
+  adminOrders,
+  GetOrderDetails,
+  Order,
+  OrdersDataByUser,
+} from './interface';
 import { PaymentsService } from 'src/payments/payments.service';
 import { Transaction } from 'src/payments/interface';
 import { ProductRepository } from 'src/products/repositories/product.repositories';
@@ -278,7 +283,7 @@ export class OrdersService {
   ): Promise<{
     success: boolean;
     message: string;
-    data: Order[];
+    data: adminOrders[];
   }> {
     const orders = await this.orderRepository.getAllOrders(page, limit);
 

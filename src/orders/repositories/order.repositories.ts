@@ -8,7 +8,7 @@ import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
 import * as schemas from 'schemas/index';
 import { orderRequest } from '../interface';
-import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns, gte, inArray, sql } from 'drizzle-orm';
 import { today } from 'src/common/constants/today.date';
 
 @Injectable()
@@ -453,8 +453,15 @@ export class OrderRepository {
     try {
       const offset = (page - 1) * limit;
       const orders = await this.db
-        .select()
+        .select({
+          ...getTableColumns(schemas.ordersTable),
+          paymentStatus: schemas.paymentsTable.status,
+        })
         .from(schemas.ordersTable)
+        .leftJoin(
+          schemas.paymentsTable,
+          eq(schemas.ordersTable.orderId, schemas.paymentsTable.orderId),
+        )
         .limit(limit)
         .offset(offset)
         .orderBy(desc(schemas.ordersTable.createdAt));
@@ -466,8 +473,8 @@ export class OrderRepository {
         quantity: Number(order.quantity),
       }));
     } catch (error) {
-      console.error('Error fetching all users:', error);
-      throw new InternalServerErrorException('Error fetching all users');
+      console.error('Error fetching all orders:', error);
+      throw new InternalServerErrorException('Error fetching all orders');
     }
   }
 
