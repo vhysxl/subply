@@ -291,8 +291,21 @@ export class OrderRepository {
         throw new NotFoundException('Order not found');
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const productIds = JSON.parse(orderResult.productIds);
+      let productIds;
+
+      if (orderResult.type === 'topup') {
+        // Langsung pakai karena hanya satu ID (string)
+        productIds = [orderResult.productIds];
+      } else {
+        // Misalnya voucher, bentuknya adalah JSON string array
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          productIds = JSON.parse(orderResult.productIds);
+        } catch (e) {
+          console.error('Invalid productIds JSON:', e);
+          productIds = []; // atau lempar error, sesuai kebutuhanmu
+        }
+      }
 
       // Kemudian ambil detail dengan products
       const [result] = await this.db

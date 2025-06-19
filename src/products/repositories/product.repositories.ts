@@ -68,7 +68,6 @@ export class ProductRepository {
     try {
       const rawData = await this.db
         .select({
-          productId: schemas.productsTable.productId,
           type: schemas.productsTable.type,
           value: schemas.productsTable.value,
           price: schemas.productsTable.price,
@@ -86,7 +85,6 @@ export class ProductRepository {
         )
         .where(eq(schemas.productsTable.status, 'available'))
         .groupBy(
-          schemas.productsTable.productId,
           schemas.productsTable.value,
           schemas.productsTable.type,
           schemas.productsTable.price,
@@ -104,7 +102,6 @@ export class ProductRepository {
 
       const data: Partial<Products>[] = rawData.map((item) => {
         const product = {
-          productId: item.productId,
           type: item.type,
           value: Number(item.value),
           price: Number(item.price),

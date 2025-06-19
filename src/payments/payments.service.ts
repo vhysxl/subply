@@ -18,7 +18,7 @@ export class PaymentsService {
     private readonly productRepositories: ProductRepository,
   ) {}
   private readonly midtransUrl =
-    'https://app.midtrans.com/snap/v1/transactions';
+    'https://app.sandbox.midtrans.com/snap/v1/transactions';
   private readonly serverKey = process.env.MIDTRANS_SERVER_KEY;
 
   async createPaymentIntent(
