@@ -288,12 +288,12 @@ export class OrdersService {
     const orders = await this.orderRepository.getAllOrders(page, limit);
 
     if (!orders) {
-      throw new InternalServerErrorException('failed to fetch users');
+      throw new InternalServerErrorException('failed to fetch orders');
     }
 
     return {
       success: true,
-      message: 'Users fetched successfully',
+      message: 'Orders fetched successfully',
       data: orders,
     };
   }

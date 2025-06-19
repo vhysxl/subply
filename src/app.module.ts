@@ -14,6 +14,8 @@ import { GamesModule } from './games/games.module';
 import { UploadModule } from './upload/upload.module';
 import { AuditLogModule } from './audit-log/audit-log.module';
 import { StatisticsModule } from './statistics/statistics.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -32,8 +34,22 @@ import { StatisticsModule } from './statistics/statistics.module';
     UploadModule,
     AuditLogModule,
     StatisticsModule,
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000, // 1 menit
+          limit: 30, // 30 request per menit
+        },
+      ],
+    }),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

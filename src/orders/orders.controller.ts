@@ -21,12 +21,14 @@ import { Role } from 'src/common/constants/role.enum';
 import { Roles } from 'src/common/decorator/role.decorator';
 import { GetUserId } from 'src/common/decorator/user.decorator';
 import { GetAllOrderDto } from './dto/get-all-order.dto';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @UseGuards(AuthGuard)
+  @Throttle({ default: { limit: 3, ttl: 600000 } })
   @Post('order')
   createOrder(@Body() OrderData: OrderDto, @Request() req: RequestWithUser) {
     const userId = req.user?.sub;
@@ -35,12 +37,14 @@ export class OrdersController {
   }
 
   @UseGuards(AuthGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Get()
   getOrders(@Query() query: GetOrderDto) {
     return this.ordersService.findOrdersByUser(query);
   }
 
   @Get('allorder')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.admin, Role.superadmin)
   getAllOrders(@Query() query: GetAllOrderDto) {
