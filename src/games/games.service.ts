@@ -3,12 +3,19 @@ import { CreateGameDto } from './dto/create-game.dto';
 import { GamesRepository } from './repositories/games.repositories';
 import { Games } from './interface';
 import { UpdateGameDto } from './dto/update-game.dto';
+import { AuditLogRepository } from 'src/audit-log/repositories/audit-log.repository';
 
 @Injectable()
 export class GamesService {
-  constructor(private readonly gamesRepository: GamesRepository) {}
+  constructor(
+    private readonly gamesRepository: GamesRepository,
+    private readonly auditLogRepository: AuditLogRepository,
+  ) {}
 
-  async createGames(createGameDto: CreateGameDto): Promise<{
+  async createGames(
+    createGameDto: CreateGameDto,
+    adminId: string,
+  ): Promise<{
     success: boolean;
     message: string;
     data: CreateGameDto;
@@ -18,6 +25,11 @@ export class GamesService {
     if (!game) {
       throw new InternalServerErrorException('Failed to create game');
     }
+
+    await this.auditLogRepository.createLog(
+      adminId,
+      `Created game: ${game[0].name || game[0].gameId}`,
+    );
 
     return {
       success: true,
@@ -35,6 +47,7 @@ export class GamesService {
     if (!games) {
       throw new InternalServerErrorException('Failed to fetch games');
     }
+
     return {
       success: true,
       message: 'Games fetched successfully',
@@ -45,6 +58,7 @@ export class GamesService {
   async updateGame(
     gameId: string,
     gameData: UpdateGameDto,
+    adminId: string,
   ): Promise<{
     success: boolean;
     message: string;
@@ -54,6 +68,12 @@ export class GamesService {
     if (!result) {
       throw new InternalServerErrorException('Failed to update game');
     }
+
+    await this.auditLogRepository.createLog(
+      adminId,
+      `Modified game ${result.name}`,
+    );
+
     return {
       success: true,
       message: 'Game updated successfully',
@@ -61,7 +81,10 @@ export class GamesService {
     };
   }
 
-  async removeGame(gameId: string): Promise<{
+  async removeGame(
+    gameId: string,
+    adminId: string,
+  ): Promise<{
     success: boolean;
     message: string;
     data: Games;
@@ -71,6 +94,11 @@ export class GamesService {
     if (!result) {
       throw new InternalServerErrorException('Failed to delete game');
     }
+
+    await this.auditLogRepository.createLog(
+      adminId,
+      `Deleted game ${result[0].name}`,
+    );
 
     return {
       success: true,

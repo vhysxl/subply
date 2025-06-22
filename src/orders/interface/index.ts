@@ -1,7 +1,7 @@
 export interface Order {
   orderId: string;
   userId: string;
-  productId: string;
+  productIds: string;
   customerName: string;
   email: string;
   target?: string | null;
@@ -14,15 +14,18 @@ export interface Order {
   quantity: number;
 }
 
+export interface adminOrders extends Order {
+  paymentStatus: string | null;
+}
+
 export interface orderRequest {
   userId: string;
   gameId: string;
+  value: number;
+  type: 'voucher' | 'topup';
   customerName: string;
   email: string;
-  target?: string | null;
-  gameName: string;
-  type: 'voucher' | 'topup';
-  value: number;
+  target?: string; // optional untuk voucher
   quantity: number;
 }
 
@@ -40,7 +43,7 @@ export interface GetOrderData {
 
 export interface GetOrderDetails extends GetOrderData {
   paymentLink?: string | null;
-  voucherCode?: string | null;
+  voucherCode?: string[] | null;
 }
 
 export type OrdersDataByUser = GetOrderData[];

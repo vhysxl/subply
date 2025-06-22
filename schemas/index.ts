@@ -7,6 +7,7 @@ import {
   timestamp,
   pgEnum,
   boolean,
+  text,
 } from 'drizzle-orm/pg-core';
 
 // Enums
@@ -72,11 +73,7 @@ export const ordersTable = pgTable('orders', {
   userId: uuid('user_id')
     .notNull()
     .references(() => usersTable.userId, { onDelete: 'cascade' }),
-  productId: uuid('product_id')
-    .references(() => productsTable.productId, {
-      onDelete: 'restrict',
-    })
-    .notNull(),
+  productIds: varchar('product_ids', { length: 1000 }).notNull(),
   target: varchar('target', { length: 255 }),
   status: orderStatusEnum('status').notNull().default('pending'),
   priceTotal: numeric('price_total', { precision: 10, scale: 2 }).notNull(),
@@ -101,4 +98,14 @@ export const paymentsTable = pgTable('payments', {
   paidAt: timestamp('paid_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   paymentLink: varchar('payment_link', { length: 255 }),
+});
+
+//audit_logs
+export const auditLogs = pgTable('audit_logs', {
+  auditId: uuid('audit_id').primaryKey().defaultRandom(),
+  admin_id: uuid('admin_id').references(() => usersTable.userId, {
+    onDelete: 'set null',
+  }),
+  action: text('action').notNull(),
+  created_at: timestamp('created_at').defaultNow(),
 });

@@ -9,6 +9,8 @@ export class PaymentsOrdersSharedService {
 
   async updateOrderStatusByPayments(orderId: string, status: string) {
     try {
+      console.log(orderId, status);
+
       const result =
         await this.paymentsOrdersSharedRepositories.updateOrderStatusByPayments(
           status,

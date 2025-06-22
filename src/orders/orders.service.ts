@@ -6,12 +6,20 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { OrderRepository } from './repositories/order.repositories';
-import { GetOrderDetails, Order, OrdersDataByUser } from './interface';
+import {
+  adminOrders,
+  GetOrderDetails,
+  Order,
+  OrdersDataByUser,
+} from './interface';
 import { PaymentsService } from 'src/payments/payments.service';
 import { Transaction } from 'src/payments/interface';
 import { ProductRepository } from 'src/products/repositories/product.repositories';
 import { OrderDto } from './dto/create-order.dto';
 import { GetOrderDto } from './dto/get-order.dto';
+import { UserRepository } from 'src/users/repositories/user.repositories';
+import { Products } from 'src/products/interface';
+import { AuditLogRepository } from 'src/audit-log/repositories/audit-log.repository';
 
 @Injectable()
 export class OrdersService {
@@ -19,9 +27,14 @@ export class OrdersService {
     private readonly orderRepository: OrderRepository,
     private readonly paymentService: PaymentsService,
     private readonly productRepository: ProductRepository,
+    private readonly usersRepository: UserRepository,
+    private readonly auditLogRepository: AuditLogRepository,
   ) {}
 
-  async createOrder(orderData: OrderDto): Promise<{
+  async createOrder(
+    orderData: OrderDto,
+    userId: string,
+  ): Promise<{
     success: boolean;
     message: string;
     data: {
@@ -29,6 +42,11 @@ export class OrdersService {
       payment: Transaction;
     };
   }> {
+    const user = await this.usersRepository.findUserById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     if (orderData.quantity < 1) {
       throw new BadRequestException('Invalid quantity');
     }
@@ -42,6 +60,15 @@ export class OrdersService {
       throw new NotFoundException('Product not found');
     }
 
+    const preparedData = {
+      ...orderData,
+      userId: user.userId,
+      email: user.email,
+      customerName: user.name,
+      gameName: product.gameName,
+      type: product.type,
+    };
+
     let order;
 
     if (product.type === 'topup') {
@@ -51,7 +78,7 @@ export class OrdersService {
           'Target is required for direct topup products',
         );
       }
-      order = await this.orderRepository.createDirectTopup(orderData);
+      order = await this.orderRepository.createDirectTopup(preparedData);
     } else if (product.type === 'voucher') {
       // Produk voucher reguler tidak boleh memiliki target
       if (orderData.target && orderData.target.trim() !== '') {
@@ -59,7 +86,7 @@ export class OrdersService {
           'Target should not be provided for regular vouchers',
         );
       }
-      order = await this.orderRepository.createVoucherOrder(orderData);
+      order = await this.orderRepository.createVoucherOrder(preparedData);
     } else {
       throw new BadRequestException('Service not available');
     }
@@ -87,11 +114,36 @@ export class OrdersService {
       }
     } catch (error) {
       console.error('Error in payment, fallback deleting order...', error);
+
+      // Perbaikan di sini - parse productIds dengan benar
+      let productIds: string[] = [];
+
+      try {
+        // Jika order.productIds adalah string JSON, parse dulu
+        if (typeof order.productIds === 'string') {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          productIds = JSON.parse(order.productIds);
+        }
+        // Jika sudah array, langsung gunakan
+        else if (Array.isArray(order.productIds)) {
+          productIds = order.productIds;
+        }
+        // Fallback jika ada single productId (backward compatibility)
+        else if (order.productIds) {
+          productIds = [order.productIds];
+        }
+      } catch (parseError) {
+        console.error('Error parsing productIds:', parseError);
+      }
+
       await this.orderRepository.fallbackDeleteOrder(
         order.orderId,
-        order.productId || '',
+        productIds,
         order.type,
       );
+
+      console.log('successfully fallback');
+
       throw new InternalServerErrorException('Failed to process payment');
     }
 
@@ -109,6 +161,12 @@ export class OrdersService {
       orders: OrdersDataByUser;
     };
   }> {
+    const user = await this.usersRepository.findUserById(query.userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     const orders = await this.orderRepository.getOrdersByUser(
       query.userId,
       query.status,
@@ -132,19 +190,24 @@ export class OrdersService {
 
   async getOrderDetails(
     orderId: string,
-    email: string,
+    userId: string,
   ): Promise<{
     success: boolean;
     message: string;
     data: GetOrderDetails;
   }> {
-    if (!orderId || typeof orderId !== 'string') {
-      throw new BadRequestException('Invalid order ID');
+    const user = await this.usersRepository.findUserById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
     }
 
-    const data = await this.orderRepository.getOrderDetails(orderId, email);
+    const data = await this.orderRepository.getOrderDetails(
+      orderId,
+      user.userId,
+    );
 
-    if (data.email !== email) {
+    if (data.userId !== user.userId) {
       throw new ForbiddenException(
         'you dont have permission to see this order',
       );
@@ -152,12 +215,86 @@ export class OrdersService {
       throw new NotFoundException('no order data for this order id');
     }
 
-    console.log(data);
-
     return {
       success: true,
       message: 'successfully fetch order details',
       data: data,
+    };
+  }
+
+  async updateOrderStatus(
+    orderId: string,
+    status: 'pending' | 'completed' | 'cancelled' | 'processed' | 'failed',
+    adminId: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: Order;
+  }> {
+    const order = await this.orderRepository.updateOrderStatus(orderId, status);
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    await this.auditLogRepository.createLog(
+      adminId,
+      `Changed status to ${status} for order ${orderId}`,
+    );
+
+    return {
+      success: true,
+      message: 'Order status updated successfully',
+      data: order,
+    };
+  }
+
+  async cancelOrder(orderId: string): Promise<{
+    success: boolean;
+    message: string;
+    data: Order;
+  }> {
+    const order = await this.orderRepository.cancelOder(orderId);
+    if (!order) {
+      throw new InternalServerErrorException('Failed to cancel order');
+    }
+
+    if (order.type === 'voucher') {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const productIds: string[] = JSON.parse(order.productIds || '[]');
+      const updateData: Partial<Products> = {
+        status: 'available',
+      };
+
+      await this.productRepository.updateProduct(updateData, productIds);
+
+      console.log(`Voucher ${order.productIds} returned to available status`);
+    }
+    return {
+      success: true,
+      message: 'success cancelling order',
+      data: order,
+    };
+  }
+
+  async getAllOrders(
+    page: number,
+    limit: number,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: adminOrders[];
+  }> {
+    const orders = await this.orderRepository.getAllOrders(page, limit);
+
+    if (!orders) {
+      throw new InternalServerErrorException('failed to fetch orders');
+    }
+
+    return {
+      success: true,
+      message: 'Orders fetched successfully',
+      data: orders,
     };
   }
 }

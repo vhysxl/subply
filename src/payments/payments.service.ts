@@ -7,11 +7,15 @@ import { Payment, Transaction } from './interface';
 import { PaymentRepository } from './repositories/payments.repositories';
 import { PaymentsOrdersSharedService } from 'src/payments-orders-shared/payments-orders-shared.service';
 
+import { ProductRepository } from 'src/products/repositories/product.repositories';
+import { Products } from 'src/products/interface';
+
 @Injectable()
 export class PaymentsService {
   constructor(
     private readonly paymentRepository: PaymentRepository,
     private readonly paymentsOrdersSharedService: PaymentsOrdersSharedService,
+    private readonly productRepositories: ProductRepository,
   ) {}
   private readonly midtransUrl =
     'https://app.sandbox.midtrans.com/snap/v1/transactions';
@@ -44,7 +48,6 @@ export class PaymentsService {
     };
 
     try {
-      //change to nestjs fetch
       const response = await fetch(this.midtransUrl, {
         method: 'POST',
         headers: {
@@ -85,6 +88,8 @@ export class PaymentsService {
 
   async setPaymentStatus(statusData: Payment) {
     try {
+      console.log(statusData);
+
       const existingPayment = await this.paymentRepository.findPaymentById(
         statusData.order_id,
       );
@@ -106,10 +111,31 @@ export class PaymentsService {
           paymentData.status,
         );
 
+      if (
+        result &&
+        result.type === 'voucher' &&
+        (result.status === 'failed' || result.status === 'cancelled')
+      ) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const productIds: string[] = JSON.parse(result.productIds || '[]');
+
+        const updateData: Partial<Products> = {
+          status: 'available',
+        };
+
+        await this.productRepositories.updateProduct(updateData, productIds);
+
+        console.log(
+          `Voucher ${result.productIds} returned to available status`,
+        );
+      }
+
       return result;
     } catch (error) {
       console.error('Error in setPaymentStatus:', error);
-      return null;
+      throw new InternalServerErrorException(
+        'Failed to process payment status',
+      );
     }
   }
 }

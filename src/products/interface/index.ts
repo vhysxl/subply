@@ -1,14 +1,16 @@
 export interface Products {
+  productId: string;
   type: 'topup' | 'voucher';
   value: number;
   price: number;
-  gameId: string | null;
+  gameId: string;
   gameName: string | null;
   stock?: number;
   isPopular: boolean;
   currency: string;
   imageUrl: string | null;
   code?: string;
+  status?: 'available' | 'used';
 }
 
 export interface NewlyCreatedProduct {
@@ -24,5 +26,5 @@ export interface NewlyCreatedProduct {
 }
 
 export interface ProductsList {
-  products: Products[];
+  products: Partial<Products>[];
 }

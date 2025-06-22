@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -13,39 +14,54 @@ import { Role } from 'src/common/constants/role.enum';
 import { CreateProductDto } from './dto/create-products.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
+import { updateProductDto } from './dto/update-products.dto';
+import { GetUserId } from 'src/common/decorator/user.decorator';
 
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
-
-  @Post()
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.admin)
-  create(@Body() createProductDto: CreateProductDto) {
-    return this.productsService.createProduct(createProductDto);
-  }
-
-  @Delete(':id')
-  @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.admin)
-  remove(@Param('id') productId: string) {
-    return this.productsService.deleteProduct(productId);
-  }
 
   @Get()
   findAll() {
     return this.productsService.findAllProducts();
   }
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.productsService.findOne(+id);
-  // }
+  @Get('/productsAdmin')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.admin, Role.superadmin)
+  findAllIndividually() {
+    return this.productsService.getProductIndividually();
+  }
 
-  // @Patch(':id')
-  // update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
-  //   return this.productsService.update(+id, updateProductDto);
-  // }
+  @Post()
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.admin, Role.superadmin)
+  create(
+    @Body() createProductDto: CreateProductDto,
+    @GetUserId() adminId: string,
+  ) {
+    return this.productsService.createProduct(createProductDto, adminId);
+  }
 
-  // @Delete(':id')
+  @Delete(':id')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.admin, Role.superadmin)
+  remove(@Param('id') productId: string, @GetUserId() adminId: string) {
+    return this.productsService.deleteProduct(productId, adminId);
+  }
+
+  @Patch(':id')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(Role.admin, Role.superadmin)
+  update(
+    @Param('id') productId: string,
+    @Body() updateProductDto: updateProductDto,
+    @GetUserId() adminId: string,
+  ) {
+    return this.productsService.updateProduct(
+      updateProductDto,
+      productId,
+      adminId,
+    );
+  }
 }
