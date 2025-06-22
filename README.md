@@ -36,6 +36,8 @@ This project is designed with clean architecture and follows a controller → se
 - Container: Docker (coming soon)
 - Payment Gateway: Midtrans
 - Hosting: GCP (planned)
+- Media Storage: Cloudinary
+
 
 ## 🔐 Features
 
@@ -64,6 +66,40 @@ src/
 ├── upload/                   # File handling
 └── main.ts                   # Application bootstrap
 ```
+
+## ⚠️ Environment Variables Required
+This API will not run without a valid .env file.
+Please create a .env file in the project root with the following variables:
+
+```
+# Database (Neon PostgreSQL)
+DATABASE_URL=""
+
+# Payment (Midtrans)
+MIDTRANS_SERVER_KEY=""
+
+# JWT Secret
+JWT_SECRET=""
+
+# Cloudinary
+CLOUDINARY_API_SECRET=""
+CLOUDINARY_API_KEY=""
+CLOUDINARY_CLOUD_NAME=""
+```
+
+## 🐳 Run with Docker
+Option 1: Using Docker Compose
+```
+docker compose up
+```
+Ensure your .env file is properly configured before running.
+
+Option 2: Pull from GitHub Container Registry
+```
+docker pull ghcr.io/vhysxl/subply-server:latest
+```
+Replace any necessary port or environment settings based on your environment.
+
 
 ## 🚀 Project setup
 
