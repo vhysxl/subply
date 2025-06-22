@@ -73,30 +73,30 @@ Please create a .env file in the project root with the following variables:
 
 ```
 # Database (Neon PostgreSQL)
-DATABASE_URL=""
+DATABASE_URL="your_neon_postgresql_url"
 
 # Payment (Midtrans)
-MIDTRANS_SERVER_KEY=""
+MIDTRANS_SERVER_KEY="your_midtrans_server_key"
 
 # JWT Secret
-JWT_SECRET=""
+JWT_SECRET="your_jwt_secret"
 
 # Cloudinary
-CLOUDINARY_API_SECRET=""
-CLOUDINARY_API_KEY=""
-CLOUDINARY_CLOUD_NAME=""
+CLOUDINARY_API_SECRET="your_cloudinary_api_secret"
+CLOUDINARY_API_KEY="your_cloudinary_api_key"
+CLOUDINARY_CLOUD_NAME="your_cloud_name"
 ```
 
 ## 🐳 Run with Docker
 Option 1: Using Docker Compose
 ```
-docker compose up
+$ docker compose up
 ```
 Ensure your .env file is properly configured before running.
 
 Option 2: Pull from GitHub Container Registry
 ```
-docker pull ghcr.io/vhysxl/subply-server:latest
+$ docker pull ghcr.io/vhysxl/subply-server:latest
 ```
 Replace any necessary port or environment settings based on your environment.
 
