@@ -21,9 +21,14 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-📦 ## About
+## 📦 About
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Subply API is a backend service powering the Subply Android application — a digital platform for game top-ups and voucher purchases.
+Built with NestJS, Drizzle ORM, and PostgreSQL, and integrated with Midtrans for payment processing.
+
+This project is designed with clean architecture and follows a controller → service → repository pattern.
+
+## 🔧 Tech Stack
 
 ## Project setup
 
