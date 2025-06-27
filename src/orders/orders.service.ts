@@ -167,10 +167,7 @@ export class OrdersService {
       throw new NotFoundException('User not found');
     }
 
-    const orders = await this.orderRepository.getOrdersByUser(
-      query.userId,
-      query.status,
-    );
+    const orders = await this.orderRepository.getOrdersByUser(query.userId);
 
     if (orders.length === 0) {
       return {

@@ -203,71 +203,68 @@ export class OrderRepository {
     }
   }
 
-  async getOrdersByUser(
-    userId: string,
-    status: 'pending' | 'completed' | 'cancelled' | 'processed',
-  ) {
+  async getOrdersByUser(userId: string) {
     try {
-      if (status === 'pending') {
-        const orders = await this.db
-          .select({
-            orderId: schemas.ordersTable.orderId,
-            target: schemas.ordersTable.target,
-            status: schemas.ordersTable.status,
-            createdAt: schemas.ordersTable.createdAt,
-            priceTotal: schemas.ordersTable.priceTotal,
-            value: schemas.ordersTable.value,
-            type: schemas.ordersTable.type,
-            gameName: schemas.ordersTable.gameName,
-            quantity: schemas.ordersTable.quantity,
-            redirectLink: schemas.paymentsTable.paymentLink,
-          })
-          .from(schemas.ordersTable)
-          .leftJoin(
-            schemas.paymentsTable,
-            eq(schemas.ordersTable.orderId, schemas.paymentsTable.orderId),
-          )
-          .where(
-            and(
-              eq(schemas.ordersTable.userId, userId),
-              eq(schemas.ordersTable.status, status),
-            ),
-          );
+      const orders = await this.db
+        .select({
+          orderId: schemas.ordersTable.orderId,
+          target: schemas.ordersTable.target,
+          status: schemas.ordersTable.status,
+          createdAt: schemas.ordersTable.createdAt,
+          priceTotal: schemas.ordersTable.priceTotal,
+          value: schemas.ordersTable.value,
+          type: schemas.ordersTable.type,
+          gameName: schemas.ordersTable.gameName,
+          quantity: schemas.ordersTable.quantity,
+          redirectLink: schemas.paymentsTable.paymentLink,
+        })
+        .from(schemas.ordersTable)
+        .leftJoin(
+          schemas.paymentsTable,
+          eq(schemas.ordersTable.orderId, schemas.paymentsTable.orderId),
+        )
+        .where(eq(schemas.ordersTable.userId, userId))
+        .orderBy(desc(schemas.ordersTable.createdAt));
 
-        return orders.map((order) => ({
+      const now = new Date();
+      const expiredOrders: string[] = [];
+
+      const processedOrders = orders.map((order) => {
+        const orderAge = now.getTime() - new Date(order.createdAt).getTime();
+        const isExpired = orderAge > 24 * 60 * 60 * 1000;
+
+        if (order.status === 'pending' && isExpired) {
+          expiredOrders.push(order.orderId);
+          return {
+            ...order,
+            status: 'failed',
+            value: Number(order.value),
+            priceTotal: Number(order.priceTotal),
+            quantity: Number(order.quantity),
+          };
+        }
+
+        return {
           ...order,
           value: Number(order.value),
           priceTotal: Number(order.priceTotal),
           quantity: Number(order.quantity),
-        }));
-      } else {
-        const orders = await this.db
-          .select({
-            orderId: schemas.ordersTable.orderId,
-            target: schemas.ordersTable.target,
-            status: schemas.ordersTable.status,
-            createdAt: schemas.ordersTable.createdAt,
-            priceTotal: schemas.ordersTable.priceTotal,
-            value: schemas.ordersTable.value,
-            type: schemas.ordersTable.type,
-            gameName: schemas.ordersTable.gameName,
-            quantity: schemas.ordersTable.quantity,
-          })
-          .from(schemas.ordersTable)
+        };
+      });
+
+      if (expiredOrders.length > 0) {
+        await this.db
+          .update(schemas.ordersTable)
+          .set({ status: 'failed' })
           .where(
             and(
-              eq(schemas.ordersTable.userId, userId),
-              eq(schemas.ordersTable.status, status),
+              inArray(schemas.ordersTable.orderId, expiredOrders),
+              eq(schemas.ordersTable.status, 'pending'),
             ),
           );
-
-        return orders.map((order) => ({
-          ...order,
-          value: Number(order.value),
-          priceTotal: Number(order.priceTotal),
-          quantity: Number(order.quantity),
-        }));
       }
+
+      return processedOrders;
     } catch (error) {
       console.error(error);
       throw new InternalServerErrorException('Failed to fetch orders');
@@ -276,7 +273,6 @@ export class OrderRepository {
 
   async getOrderDetails(orderId: string, userId: string) {
     try {
-      // Pertama ambil order untuk dapat productIds
       const [orderResult] = await this.db
         .select()
         .from(schemas.ordersTable)
@@ -294,20 +290,17 @@ export class OrderRepository {
       let productIds;
 
       if (orderResult.type === 'topup') {
-        // Langsung pakai karena hanya satu ID (string)
         productIds = [orderResult.productIds];
       } else {
-        // Misalnya voucher, bentuknya adalah JSON string array
         try {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           productIds = JSON.parse(orderResult.productIds);
         } catch (e) {
           console.error('Invalid productIds JSON:', e);
-          productIds = []; // atau lempar error, sesuai kebutuhanmu
+          productIds = [];
         }
       }
 
-      // Kemudian ambil detail dengan products
       const [result] = await this.db
         .select({
           orderId: schemas.ordersTable.orderId,

@@ -49,7 +49,7 @@ export class OrdersController {
   @Roles(Role.admin, Role.superadmin)
   getAllOrders(@Query() query: GetAllOrderDto) {
     const { page } = query;
-    const limit = 10;
+    const limit = 20;
 
     return this.ordersService.getAllOrders(page, limit);
   }
