@@ -33,9 +33,11 @@ This project is designed with clean architecture and follows a controller → se
 - Framework: NestJS
 - ORM: Drizzle ORM
 - Database: PostgreSQL (NeonDB)
-- Container: Docker (coming soon)
+- Container: Docker 
 - Payment Gateway: Midtrans
 - Hosting: GCP (planned)
+- Media Storage: Cloudinary
+
 
 ## 🔐 Features
 
@@ -64,6 +66,40 @@ src/
 ├── upload/                   # File handling
 └── main.ts                   # Application bootstrap
 ```
+
+## ⚠️ Environment Variables Required
+This API will not run without a valid .env file.
+Please create a .env file in the project root with the following variables:
+
+```
+# Database (Neon PostgreSQL)
+DATABASE_URL="your_neon_postgresql_url"
+
+# Payment (Midtrans)
+MIDTRANS_SERVER_KEY="your_midtrans_server_key"
+
+# JWT Secret
+JWT_SECRET="your_jwt_secret"
+
+# Cloudinary
+CLOUDINARY_API_SECRET="your_cloudinary_api_secret"
+CLOUDINARY_API_KEY="your_cloudinary_api_key"
+CLOUDINARY_CLOUD_NAME="your_cloud_name"
+```
+
+## 🐳 Run with Docker
+Option 1: Using Docker Compose
+```
+$ docker compose up
+```
+Ensure your .env file is properly configured before running.
+
+Option 2: Pull from GitHub Container Registry
+```
+$ docker pull ghcr.io/vhysxl/subply-server:latest
+```
+Replace any necessary port or environment settings based on your environment.
+
 
 ## 🚀 Project setup
 
