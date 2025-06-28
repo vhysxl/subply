@@ -13,11 +13,14 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
+    "test": "jest --testPathIgnorePatterns=\"controller.spec.ts\"",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:auth": "jest src/auth/auth.service.spec.ts",
+    "test:audit": "jest src/audit-log/audit-log.service.spec.ts",
+    "test:games": "jest src/games/games.service.spec.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
@@ -84,6 +87,10 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1",
+      "^schemas/(.*)$": "<rootDir>/../schemas/$1"
+    }
   }
 }

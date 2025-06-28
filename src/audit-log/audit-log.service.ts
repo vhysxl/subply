@@ -29,7 +29,7 @@ export class AuditLogService {
 
     return {
       success: true,
-      message: 'Users fetched successfully',
+      message: 'Audit fetched successfully',
       data: audits,
     };
   }
