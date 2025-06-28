@@ -42,20 +42,24 @@ export class OrdersService {
       payment: Transaction;
     };
   }> {
+    //cek user, apakah user valid?
     const user = await this.usersRepository.findUserById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
+    // cek quanitity
     if (orderData.quantity < 1) {
       throw new BadRequestException('Invalid quantity');
     }
 
+    //ambil produk berdasarkan data order
     const product = await this.productRepository.getProductInfo(
       orderData.gameId,
       orderData.value,
     );
 
+    //kalau product tidak ada throw err
     if (!product) {
       throw new NotFoundException('Product not found');
     }
@@ -78,6 +82,7 @@ export class OrdersService {
           'Target is required for direct topup products',
         );
       }
+      //proses order tipe topup
       order = await this.orderRepository.createDirectTopup(preparedData);
     } else if (product.type === 'voucher') {
       // Produk voucher reguler tidak boleh memiliki target
@@ -86,6 +91,7 @@ export class OrdersService {
           'Target should not be provided for regular vouchers',
         );
       }
+      //proses order tipe voucher
       order = await this.orderRepository.createVoucherOrder(preparedData);
     } else {
       throw new BadRequestException('Service not available');
@@ -95,6 +101,7 @@ export class OrdersService {
       throw new InternalServerErrorException('Failed to create order');
     }
 
+    //prepare payment
     let paymentResponse: {
       success: boolean;
       message: string;
@@ -115,11 +122,11 @@ export class OrdersService {
     } catch (error) {
       console.error('Error in payment, fallback deleting order...', error);
 
-      // Perbaikan di sini - parse productIds dengan benar
+      // parse productIds
       let productIds: string[] = [];
 
       try {
-        // Jika order.productIds adalah string JSON, parse dulu
+        // kalau productIds adalah string JSON, parse dulu
         if (typeof order.productIds === 'string') {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           productIds = JSON.parse(order.productIds);
@@ -128,7 +135,7 @@ export class OrdersService {
         else if (Array.isArray(order.productIds)) {
           productIds = order.productIds;
         }
-        // Fallback jika ada single productId (backward compatibility)
+        // Fallback jika ada single productId
         else if (order.productIds) {
           productIds = [order.productIds];
         }
