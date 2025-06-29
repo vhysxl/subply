@@ -239,6 +239,13 @@
       "when": 1749405248696,
       "tag": "0033_conscious_jetstream",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1751130891986,
+      "tag": "0034_tiny_oracle",
+      "breakpoints": true
     }
   ]
 }

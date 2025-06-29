@@ -1,7 +1,7 @@
 export interface Order {
   orderId: string;
   userId: string;
-  productIds: string;
+  productsOrder: productOrder[];
   customerName: string;
   email: string;
   target?: string | null;
@@ -11,6 +11,12 @@ export interface Order {
   priceTotal: number;
   status: string;
   createdAt: Date;
+  quantity: number;
+}
+
+export interface productOrder {
+  orderId: string;
+  productId: string;
   quantity: number;
 }
 

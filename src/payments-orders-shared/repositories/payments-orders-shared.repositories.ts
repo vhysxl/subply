@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
-import * as schemas from 'schemas/index';
+import * as schemas from 'schemas/tables';
 import { and, eq, sql } from 'drizzle-orm';
 
 @Injectable()

@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
-import * as schemas from 'schemas/index';
-import { orderRequest } from '../interface';
+import * as schemas from 'schemas/tables';
+import { Order, orderRequest } from '../interface';
 import { and, desc, eq, getTableColumns, gte, inArray, sql } from 'drizzle-orm';
 import { today } from 'src/common/constants/today.date';
 
@@ -27,7 +27,9 @@ export class OrderRepository {
     quantity,
   }: orderRequest) {
     try {
+      //pake trx biar atomic
       const order = await this.db.transaction(async (trx) => {
+        //cek ketersediaan voucher
         const availableVouchers = await trx
           .select({
             product: schemas.productsTable,
@@ -48,33 +50,47 @@ export class OrderRepository {
           )
           .limit(quantity);
 
+        //throw kalo voucher kurang
         if (availableVouchers.length < quantity) {
           throw new NotFoundException(
             `Only ${availableVouchers.length} vouchers available, but ${quantity} requested`,
           );
         }
 
-        const totalPrice =
-          Number(availableVouchers[0].product.price) * quantity;
+        // ambil data voucher pertama jadi patokan data
+        const firstVoucher = availableVouchers[0];
+        const totalPrice = Number(firstVoucher.product.price) * quantity;
         const productIds = availableVouchers.map((v) => v.product.productId);
 
+        //bikin order
         const [newOrder] = await trx
           .insert(schemas.ordersTable)
           .values({
             userId: userId,
             customerName: customerName,
             email: email,
-            productIds: JSON.stringify(productIds),
-            value: availableVouchers[0].product.value,
+            value: firstVoucher.product.value,
             priceTotal: String(totalPrice),
-            type: availableVouchers[0].product.type,
+            type: firstVoucher.product.type,
             status: 'pending',
             target: '',
-            quantity: String(quantity),
-            gameName: availableVouchers[0].gameName,
+            gameName: firstVoucher.gameName,
           })
           .returning();
 
+        //insert produk dan order ke table junction
+        const orderProducts = await trx
+          .insert(schemas.orderProductsTable)
+          .values(
+            availableVouchers.map((voucher) => ({
+              orderId: newOrder.orderId,
+              productId: voucher.product.productId,
+              quantity: 1,
+            })),
+          )
+          .returning();
+
+        //set status voucher yang dipake ke used
         await trx
           .update(schemas.productsTable)
           .set({
@@ -83,15 +99,19 @@ export class OrderRepository {
           })
           .where(inArray(schemas.productsTable.productId, productIds));
 
-        return newOrder;
+        //casting tipe data
+        const order: Order = {
+          ...newOrder,
+          value: Number(newOrder.value),
+          priceTotal: Number(newOrder.priceTotal),
+          productsOrder: orderProducts,
+          quantity: orderProducts.reduce((sum, item) => sum + item.quantity, 0),
+        };
+
+        return order;
       });
 
-      return {
-        ...order,
-        value: Number(order.value),
-        priceTotal: Number(order.priceTotal),
-        quantity: Number(order.quantity),
-      };
+      return order;
     } catch (error) {
       console.error('Error creating quick order:', error);
 
@@ -114,7 +134,8 @@ export class OrderRepository {
   }: orderRequest) {
     try {
       const order = await this.db.transaction(async (trx) => {
-        const [topupWithGame] = await trx
+        //cari produk (takutnya produk goib)
+        const [availableProduct] = await trx
           .select({
             product: schemas.productsTable,
             gameName: schemas.games.name,
@@ -134,43 +155,56 @@ export class OrderRepository {
           )
           .limit(1);
 
-        if (!topupWithGame) {
+        //throw error kalo goib
+        if (!availableProduct) {
           throw new NotFoundException('No available topup option');
         }
 
-        const totalPrice = Number(topupWithGame.product.price) * quantity;
+        const totalPrice = Number(availableProduct.product.price) * quantity;
 
+        //buat order baru
         const [newOrder] = await trx
           .insert(schemas.ordersTable)
           .values({
             userId: userId,
             customerName: customerName,
             email: email,
-            productIds: topupWithGame.product.productId,
-            value: topupWithGame.product.value,
+            value: availableProduct.product.value,
             priceTotal: String(totalPrice),
-            type: topupWithGame.product.type,
+            type: availableProduct.product.type,
             status: 'pending',
             target: target,
-            quantity: String(quantity),
-            gameName: topupWithGame.gameName,
+            gameName: availableProduct.gameName,
           })
           .returning();
 
-        return newOrder;
+        // insert ke junction table
+        const orderProducts = await trx
+          .insert(schemas.orderProductsTable)
+          .values({
+            orderId: newOrder.orderId,
+            productId: availableProduct.product.productId,
+            quantity: quantity,
+          })
+          .returning();
+
+        //casting
+        const order: Order = {
+          ...newOrder,
+          priceTotal: Number(newOrder.priceTotal),
+          value: Number(newOrder.value),
+          productsOrder: orderProducts,
+          quantity: orderProducts.reduce((sum, item) => sum + item.quantity, 0),
+        };
+
+        return order;
       });
 
-      return {
-        ...order,
-        value: Number(order.value),
-        priceTotal: Number(order.priceTotal),
-        quantity: Number(order.quantity),
-      };
+      return order;
     } catch (error) {
       console.error('Error creating quick order:', error);
 
       if (error instanceof NotFoundException) throw error;
-
       throw new InternalServerErrorException(
         'Failed to create order, please try again later',
       );
@@ -205,64 +239,42 @@ export class OrderRepository {
 
   async getOrdersByUser(userId: string) {
     try {
-      const orders = await this.db
-        .select({
-          orderId: schemas.ordersTable.orderId,
-          target: schemas.ordersTable.target,
-          status: schemas.ordersTable.status,
-          createdAt: schemas.ordersTable.createdAt,
-          priceTotal: schemas.ordersTable.priceTotal,
-          value: schemas.ordersTable.value,
-          type: schemas.ordersTable.type,
-          gameName: schemas.ordersTable.gameName,
-          quantity: schemas.ordersTable.quantity,
-          redirectLink: schemas.paymentsTable.paymentLink,
-        })
-        .from(schemas.ordersTable)
-        .leftJoin(
-          schemas.paymentsTable,
-          eq(schemas.ordersTable.orderId, schemas.paymentsTable.orderId),
-        )
-        .where(eq(schemas.ordersTable.userId, userId))
-        .orderBy(desc(schemas.ordersTable.createdAt));
-
-      const now = new Date();
-      const expiredOrders: string[] = [];
-
-      const processedOrders = orders.map((order) => {
-        const orderAge = now.getTime() - new Date(order.createdAt).getTime();
-        const isExpired = orderAge > 24 * 60 * 60 * 1000;
-
-        if (order.status === 'pending' && isExpired) {
-          expiredOrders.push(order.orderId);
-          return {
-            ...order,
-            status: 'failed',
-            value: Number(order.value),
-            priceTotal: Number(order.priceTotal),
-            quantity: Number(order.quantity),
-          };
-        }
-
-        return {
-          ...order,
-          value: Number(order.value),
-          priceTotal: Number(order.priceTotal),
-          quantity: Number(order.quantity),
-        };
+      const orders = await this.db.query.ordersTable.findMany({
+        where: eq(schemas.ordersTable.userId, userId), // ✅ Fix: userId bukan orderId
+        orderBy: [desc(schemas.ordersTable.createdAt)],
+        with: {
+          payment: {
+            columns: {
+              paymentLink: true,
+            },
+          },
+          orderProducts: {
+            with: {
+              product: {
+                columns: {
+                  productId: true,
+                  name: true,
+                  price: true,
+                },
+              },
+            },
+          },
+        },
       });
 
-      if (expiredOrders.length > 0) {
-        await this.db
-          .update(schemas.ordersTable)
-          .set({ status: 'failed' })
-          .where(
-            and(
-              inArray(schemas.ordersTable.orderId, expiredOrders),
-              eq(schemas.ordersTable.status, 'pending'),
-            ),
-          );
-      }
+      const processedOrders = orders.map((order) => ({
+        orderId: order.orderId,
+        target: order.target,
+        status: order.status,
+        createdAt: order.createdAt,
+        priceTotal: Number(order.priceTotal),
+        value: Number(order.value),
+        type: order.type,
+        gameName: order.gameName,
+        redirectLink: order.payment?.paymentLink || null, // ✅ Fix: akses paymentLink
+        productsOrder: order.orderProducts,
+        quantity: order.orderProducts.reduce((sum, op) => sum + op.quantity, 0),
+      }));
 
       return processedOrders;
     } catch (error) {
