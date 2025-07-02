@@ -21,7 +21,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  @Throttle({ default: { limit: 5, ttl: 300000 } }) // 5 login per 5 menit
+  @Throttle({ default: { limit: 10, ttl: 300000 } }) // 10 login per 5 menit
   signIn(@Body() credentials: LoginDto) {
     return this.authService.login(credentials);
   }
