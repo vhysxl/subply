@@ -20,10 +20,6 @@ export interface productOrder {
   quantity: number;
 }
 
-export interface adminOrders extends Order {
-  paymentStatus: string | null;
-}
-
 export interface orderRequest {
   userId: string;
   gameId: string;
@@ -45,11 +41,16 @@ export interface GetOrderData {
   type: 'voucher' | 'topup';
   gameName: string;
   quantity: number;
+  paymentLink: string | null;
+}
+
+export interface adminOrders extends GetOrderData {
+  paymentStatus: string | null;
 }
 
 export interface GetOrderDetails extends GetOrderData {
-  paymentLink?: string | null;
   voucherCode?: string[] | null;
+  userId: string;
 }
 
 export type OrdersDataByUser = GetOrderData[];

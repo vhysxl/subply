@@ -3,7 +3,6 @@ import { DATABASE_CONNECTION } from './database-connection';
 import { ConfigService } from '@nestjs/config';
 import { neonConfig, Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import * as schema from 'schemas';
 
 neonConfig.webSocketConstructor = WebSocket; // konfigurasi ke tipe websocket
 
@@ -15,7 +14,7 @@ neonConfig.webSocketConstructor = WebSocket; // konfigurasi ke tipe websocket
         const pool = new Pool({
           connectionString: ConfigService.getOrThrow('DATABASE_URL'),
         }); // lookup env cari url db kalau tidak ada throw
-        const db = drizzle({ client: pool, schema }); // koneksi ke neon via pool
+        const db = drizzle({ client: pool }); // koneksi ke neon via pool
         return db; // Ini yang akan di-inject nanti
       },
       inject: [ConfigService], // yang dibutuhkan (import)

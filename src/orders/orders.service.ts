@@ -18,7 +18,6 @@ import { ProductRepository } from 'src/products/repositories/product.repositorie
 import { OrderDto } from './dto/create-order.dto';
 import { GetOrderDto } from './dto/get-order.dto';
 import { UserRepository } from 'src/users/repositories/user.repositories';
-import { Products } from 'src/products/interface';
 import { AuditLogRepository } from 'src/audit-log/repositories/audit-log.repository';
 
 @Injectable()
@@ -109,6 +108,7 @@ export class OrdersService {
     };
 
     try {
+      //call midtrans buat url payment
       paymentResponse = await this.paymentService.createPaymentIntent(
         order.orderId,
         order.email,
@@ -122,32 +122,8 @@ export class OrdersService {
     } catch (error) {
       console.error('Error in payment, fallback deleting order...', error);
 
-      // parse productIds
-      let productIds: string[] = [];
-
-      try {
-        // kalau productIds adalah string JSON, parse dulu
-        if (typeof order.productIds === 'string') {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          productIds = JSON.parse(order.productIds);
-        }
-        // Jika sudah array, langsung gunakan
-        else if (Array.isArray(order.productIds)) {
-          productIds = order.productIds;
-        }
-        // Fallback jika ada single productId
-        else if (order.productIds) {
-          productIds = [order.productIds];
-        }
-      } catch (parseError) {
-        console.error('Error parsing productIds:', parseError);
-      }
-
-      await this.orderRepository.fallbackDeleteOrder(
-        order.orderId,
-        productIds,
-        order.type,
-      );
+      // fallback kalo midtrans nguwawor
+      await this.orderRepository.fallbackDeleteOrder(order.orderId, order.type);
 
       console.log('successfully fallback');
 
@@ -233,7 +209,7 @@ export class OrdersService {
   ): Promise<{
     success: boolean;
     message: string;
-    data: Order;
+    data: Omit<Order, 'quantity' | 'productsOrder'>;
   }> {
     const order = await this.orderRepository.updateOrderStatus(orderId, status);
 
@@ -253,27 +229,19 @@ export class OrdersService {
     };
   }
 
-  async cancelOrder(orderId: string): Promise<{
+  async cancelOrder(
+    orderId: string,
+    userId: string,
+  ): Promise<{
     success: boolean;
     message: string;
-    data: Order;
+    data: Omit<Order, 'quantity' | 'productsOrder'>;
   }> {
-    const order = await this.orderRepository.cancelOder(orderId);
+    const order = await this.orderRepository.cancelOder(orderId, userId);
     if (!order) {
       throw new InternalServerErrorException('Failed to cancel order');
     }
 
-    if (order.type === 'voucher') {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const productIds: string[] = JSON.parse(order.productIds || '[]');
-      const updateData: Partial<Products> = {
-        status: 'available',
-      };
-
-      await this.productRepository.updateProduct(updateData, productIds);
-
-      console.log(`Voucher ${order.productIds} returned to available status`);
-    }
     return {
       success: true,
       message: 'success cancelling order',
