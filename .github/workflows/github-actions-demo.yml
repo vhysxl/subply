@@ -1,18 +1,37 @@
-name: Subply Actions Demo
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
-on: [push]
+name: Subply Pipeline #nama actionsnya
+run-name: ${{ github.actor }} triggered pipeline
+on:
+  push:
+    branches:
+      - master #yang master-master aj
 jobs:
-  Explore-GitHub-Actions:
-    runs-on: ubuntu-latest
+  subply-deploy:
+    runs-on: ubuntu-latest #os yang dipakai gh actions
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - name: Check out repository code
-        uses: actions/checkout@v4
-      - run: echo "💡 The ${{ github.repository }} repository has been cloned to the runner."
-      - run: echo "🖥️ The workflow is now ready to test your code on the runner."
-      - name: List files in the repository
+      - uses: actions/checkout@v4 #tool untuk clone current repo
+
+      - name: Show info
+        run: | #basically ambil data ni vm
+          echo "OS: ${{ runner.os }}" 
+          echo "Branch: ${{ github.ref }}"
+          echo "Repo: ${{ github.repository }}"
+
+      - name: LIst workspace files
+        run: ls -la ${{github.workspace}}
+
+      - name: build docker image # build image
+        run: docker build -t subply-api:latest .
+
+      - name: adding tags to image #nambah tag ke image
+        run: | # tag untuk ghcr dan gcr
+          docker tag subply-api:latest gcr.io/gcr-160603/subply-api:latest
+          docker tag subply-api:latest ghcr.io/vhysxl/subply-api:latest
+
+      - name: login ghcr # loginkan ghcr le
+        run: echo ${{secrets.GITHUB_TOKEN}} | docker login ghcr.io -u ${{github.actor}} --password-stdin
+
+      - name: push to ghcr
         run: |
-          ls ${{ github.workspace }}
-      - run: echo "🍏 This job's status is ${{ job.status }}."
+          docker push ghcr.io/vhysxl/subply-api:latest
+
+      #todo : gcp (gae)
