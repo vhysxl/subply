@@ -186,4 +186,19 @@ export class UserRepository {
       throw new InternalServerErrorException('Error fetching new users today');
     }
   }
+
+  async changePw(password: string, userId: string) {
+    try {
+      const [result] = await this.db
+        .update(schemas.usersTable)
+        .set({ password: password })
+        .where(eq(schemas.usersTable.userId, userId))
+        .returning();
+
+      return result;
+    } catch (error) {
+      console.error('Error changing password: ', error);
+      throw new InternalServerErrorException('Error changing password');
+    }
+  }
 }

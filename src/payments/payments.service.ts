@@ -6,9 +6,7 @@ import {
 import { Payment, Transaction } from './interface';
 import { PaymentRepository } from './repositories/payments.repositories';
 import { PaymentsOrdersSharedService } from 'src/payments-orders-shared/payments-orders-shared.service';
-
 import { ProductRepository } from 'src/products/repositories/product.repositories';
-import { Products } from 'src/products/interface';
 
 @Injectable()
 export class PaymentsService {
@@ -116,17 +114,11 @@ export class PaymentsService {
         result.type === 'voucher' &&
         (result.status === 'failed' || result.status === 'cancelled')
       ) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        const productIds: string[] = JSON.parse(result.productIds || '[]');
-
-        const updateData: Partial<Products> = {
-          status: 'available',
-        };
-
-        await this.productRepositories.updateProduct(updateData, productIds);
-
+        const productIds = await this.productRepositories.productRecovery(
+          result.orderId,
+        );
         console.log(
-          `Voucher ${result.productIds} returned to available status`,
+          `Voucher products ${productIds.join(', ')} returned to available status`,
         );
       }
 

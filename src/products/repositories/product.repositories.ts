@@ -300,4 +300,30 @@ export class ProductRepository {
       throw new InternalServerErrorException('Error fetching products');
     }
   }
+
+  async productRecovery(orderId: string) {
+    const result = await this.db.transaction(async (trx) => {
+      const orderProducts = await trx
+        .select({
+          productId: schemas.orderProductsTable.productId,
+        })
+        .from(schemas.orderProductsTable)
+        .where(eq(schemas.orderProductsTable.orderId, orderId));
+
+      if (!orderProducts || orderProducts.length === 0) {
+        throw new NotFoundException('Product data not found');
+      }
+
+      const productIds = orderProducts.map((v) => v.productId);
+
+      await trx
+        .update(schemas.productsTable)
+        .set({ status: 'available' })
+        .where(inArray(schemas.productsTable.productId, productIds));
+
+      return productIds;
+    });
+
+    return result;
+  }
 }

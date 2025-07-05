@@ -53,7 +53,11 @@ export class PaymentsOrdersSharedRepositories {
           throw new InternalServerErrorException('Update failed');
         }
 
-        if (orderData.status === 'completed' || orderData.status === 'failed') {
+        if (
+          orderData.status === 'completed' ||
+          orderData.status === 'failed' ||
+          orderData.status === 'processed'
+        ) {
           await trx
             .update(schemas.paymentsTable)
             .set({ paymentLink: null })

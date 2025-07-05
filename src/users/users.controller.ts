@@ -17,6 +17,7 @@ import { Roles } from 'src/common/decorator/role.decorator';
 import { updateUserDto } from './dto/update-user.dto';
 import { SearchUserDto } from './dto/search-dto';
 import { GetUserId } from 'src/common/decorator/user.decorator';
+import { ChangePwDto } from './dto/change-pw.dto';
 
 @Controller('users')
 export class UsersController {
@@ -38,6 +39,16 @@ export class UsersController {
   findOneByName(@Query() data: SearchUserDto) {
     console.log(data);
     return this.usersService.searchUserByName(data.name);
+  }
+
+  @Patch('/password/:userId')
+  @UseGuards(AuthGuard)
+  changePassword(@Param('userId') userId: string, @Body() data: ChangePwDto) {
+    return this.usersService.changePassword(
+      userId,
+      data.newPassword,
+      data.oldPassword,
+    );
   }
 
   @Patch('/admin/:userId')

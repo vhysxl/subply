@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   InternalServerErrorException,
@@ -207,6 +208,47 @@ export class UsersService {
       success: true,
       message: 'Success finding user',
       data: users,
+    };
+  }
+
+  async changePassword(
+    userId: string,
+    newPassword: string,
+    oldPassword: string,
+  ): Promise<{
+    success: true;
+    message: string;
+    data: User;
+  }> {
+    const user = await this.userRepository.findUserById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (await bcrypt.compare(newPassword, user.password)) {
+      throw new BadRequestException(
+        'New password cannot be same as old password',
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const results = await this.userRepository.changePw(hashedPassword, userId);
+
+    if (!results)
+      throw new InternalServerErrorException('Failed changing password');
+
+    return {
+      success: true,
+      message: 'Successfully change password',
+      data: results,
     };
   }
 }
