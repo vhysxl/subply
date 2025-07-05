@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
-import * as schemas from 'schemas/index';
+import * as schemas from 'schemas/tables';
 import { eq, count, and, inArray } from 'drizzle-orm';
 import { Products } from '../interface';
 import { CreateProductDto } from '../dto/create-products.dto';
@@ -299,5 +299,31 @@ export class ProductRepository {
       console.error('Error fetching products:', error);
       throw new InternalServerErrorException('Error fetching products');
     }
+  }
+
+  async productRecovery(orderId: string) {
+    const result = await this.db.transaction(async (trx) => {
+      const orderProducts = await trx
+        .select({
+          productId: schemas.orderProductsTable.productId,
+        })
+        .from(schemas.orderProductsTable)
+        .where(eq(schemas.orderProductsTable.orderId, orderId));
+
+      if (!orderProducts || orderProducts.length === 0) {
+        throw new NotFoundException('Product data not found');
+      }
+
+      const productIds = orderProducts.map((v) => v.productId);
+
+      await trx
+        .update(schemas.productsTable)
+        .set({ status: 'available' })
+        .where(inArray(schemas.productsTable.productId, productIds));
+
+      return productIds;
+    });
+
+    return result;
   }
 }

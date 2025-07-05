@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
-import * as schemas from 'schemas/index';
+import * as schemas from 'schemas/tables';
 import { desc, eq, gte, ilike, sql } from 'drizzle-orm';
 import { AuthInterface } from 'src/auth/interfaces';
 import { User } from '../interfaces';
@@ -184,6 +184,21 @@ export class UserRepository {
     } catch (error) {
       console.error('Error fetching new users today:', error);
       throw new InternalServerErrorException('Error fetching new users today');
+    }
+  }
+
+  async changePw(password: string, userId: string) {
+    try {
+      const [result] = await this.db
+        .update(schemas.usersTable)
+        .set({ password: password })
+        .where(eq(schemas.usersTable.userId, userId))
+        .returning();
+
+      return result;
+    } catch (error) {
+      console.error('Error changing password: ', error);
+      throw new InternalServerErrorException('Error changing password');
     }
   }
 }

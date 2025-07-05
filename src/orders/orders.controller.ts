@@ -69,8 +69,14 @@ export class OrdersController {
 
   @UseGuards(AuthGuard)
   @Patch(':orderId/cancel')
-  cancelOrder(@Param('orderId') orderId: string) {
-    return this.ordersService.cancelOrder(orderId);
+  cancelOrder(
+    @Param('orderId') orderId: string,
+    @Request() req: RequestWithUser,
+  ) {
+    const userId = req.user?.sub;
+    if (!userId)
+      throw new BadRequestException('Invalid request for order details');
+    return this.ordersService.cancelOrder(orderId, userId);
   }
 
   //admin stuff

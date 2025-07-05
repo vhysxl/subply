@@ -156,4 +156,18 @@ export class ProductsService {
       },
     };
   }
+
+  async recoveryProducts(orderId: string): Promise<{
+    success: boolean;
+    message: string;
+    data?: string[];
+  }> {
+    const result = await this.ProductRepository.productRecovery(orderId);
+    console.log(result);
+    return {
+      success: true,
+      message: 'Products recovered successfully',
+      data: result,
+    };
+  }
 }

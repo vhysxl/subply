@@ -1,7 +1,7 @@
 export interface Order {
   orderId: string;
   userId: string;
-  productIds: string;
+  productsOrder: productOrder[];
   customerName: string;
   email: string;
   target?: string | null;
@@ -14,8 +14,10 @@ export interface Order {
   quantity: number;
 }
 
-export interface adminOrders extends Order {
-  paymentStatus: string | null;
+export interface productOrder {
+  orderId: string;
+  productId: string;
+  quantity: number;
 }
 
 export interface orderRequest {
@@ -39,11 +41,16 @@ export interface GetOrderData {
   type: 'voucher' | 'topup';
   gameName: string;
   quantity: number;
+  paymentLink: string | null;
+}
+
+export interface adminOrders extends GetOrderData {
+  paymentStatus: string | null;
 }
 
 export interface GetOrderDetails extends GetOrderData {
-  paymentLink?: string | null;
   voucherCode?: string[] | null;
+  userId: string;
 }
 
 export type OrdersDataByUser = GetOrderData[];

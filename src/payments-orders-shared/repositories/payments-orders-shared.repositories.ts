@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
-import * as schemas from 'schemas/index';
+import * as schemas from 'schemas/tables';
 import { and, eq, sql } from 'drizzle-orm';
 
 @Injectable()
@@ -41,15 +41,31 @@ export class PaymentsOrdersSharedRepositories {
           ? 'completed'
           : intermediateStatus;
 
-      const [result] = await this.db
-        .update(schemas.ordersTable)
-        .set({ status: finalStatus })
-        .where(eq(schemas.ordersTable.orderId, orderId))
-        .returning();
+      //update status dan paymentlink
+      const result = await this.db.transaction(async (trx) => {
+        const [orderData] = await trx
+          .update(schemas.ordersTable)
+          .set({ status: finalStatus })
+          .where(eq(schemas.ordersTable.orderId, orderId))
+          .returning();
 
-      if (!result) {
-        throw new InternalServerErrorException('Update failed');
-      }
+        if (!orderData) {
+          throw new InternalServerErrorException('Update failed');
+        }
+
+        if (
+          orderData.status === 'completed' ||
+          orderData.status === 'failed' ||
+          orderData.status === 'processed'
+        ) {
+          await trx
+            .update(schemas.paymentsTable)
+            .set({ paymentLink: null })
+            .where(eq(schemas.paymentsTable.orderId, orderData.orderId));
+        }
+
+        return orderData;
+      });
 
       return result;
     } catch (error) {

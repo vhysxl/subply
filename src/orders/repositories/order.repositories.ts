@@ -6,9 +6,23 @@ import {
 } from '@nestjs/common';
 import { NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { DATABASE_CONNECTION } from 'src/database/database-connection';
-import * as schemas from 'schemas/index';
-import { orderRequest } from '../interface';
-import { and, desc, eq, getTableColumns, gte, inArray, sql } from 'drizzle-orm';
+import * as schemas from 'schemas/tables';
+import {
+  GetOrderData,
+  GetOrderDetails,
+  Order,
+  orderRequest,
+} from '../interface';
+import {
+  and,
+  desc,
+  eq,
+  getTableColumns,
+  gte,
+  inArray,
+  sql,
+  sum,
+} from 'drizzle-orm';
 import { today } from 'src/common/constants/today.date';
 
 @Injectable()
@@ -27,7 +41,9 @@ export class OrderRepository {
     quantity,
   }: orderRequest) {
     try {
+      //pake trx biar atomic
       const order = await this.db.transaction(async (trx) => {
+        //cek ketersediaan voucher
         const availableVouchers = await trx
           .select({
             product: schemas.productsTable,
@@ -48,33 +64,47 @@ export class OrderRepository {
           )
           .limit(quantity);
 
+        //throw kalo voucher kurang
         if (availableVouchers.length < quantity) {
           throw new NotFoundException(
             `Only ${availableVouchers.length} vouchers available, but ${quantity} requested`,
           );
         }
 
-        const totalPrice =
-          Number(availableVouchers[0].product.price) * quantity;
+        // ambil data voucher pertama jadi patokan data
+        const firstVoucher = availableVouchers[0];
+        const totalPrice = Number(firstVoucher.product.price) * quantity;
         const productIds = availableVouchers.map((v) => v.product.productId);
 
+        //bikin order
         const [newOrder] = await trx
           .insert(schemas.ordersTable)
           .values({
             userId: userId,
             customerName: customerName,
             email: email,
-            productIds: JSON.stringify(productIds),
-            value: availableVouchers[0].product.value,
+            value: firstVoucher.product.value,
             priceTotal: String(totalPrice),
-            type: availableVouchers[0].product.type,
+            type: firstVoucher.product.type,
             status: 'pending',
             target: '',
-            quantity: String(quantity),
-            gameName: availableVouchers[0].gameName,
+            gameName: firstVoucher.gameName,
           })
           .returning();
 
+        //insert produk dan order ke table junction
+        const orderProducts = await trx
+          .insert(schemas.orderProductsTable)
+          .values(
+            availableVouchers.map((voucher) => ({
+              orderId: newOrder.orderId,
+              productId: voucher.product.productId,
+              quantity: 1,
+            })),
+          )
+          .returning();
+
+        //set status voucher yang dipake ke used
         await trx
           .update(schemas.productsTable)
           .set({
@@ -83,15 +113,19 @@ export class OrderRepository {
           })
           .where(inArray(schemas.productsTable.productId, productIds));
 
-        return newOrder;
+        //casting tipe data
+        const order: Order = {
+          ...newOrder,
+          value: Number(newOrder.value),
+          priceTotal: Number(newOrder.priceTotal),
+          productsOrder: orderProducts,
+          quantity: orderProducts.reduce((sum, item) => sum + item.quantity, 0),
+        };
+
+        return order;
       });
 
-      return {
-        ...order,
-        value: Number(order.value),
-        priceTotal: Number(order.priceTotal),
-        quantity: Number(order.quantity),
-      };
+      return order;
     } catch (error) {
       console.error('Error creating quick order:', error);
 
@@ -114,7 +148,8 @@ export class OrderRepository {
   }: orderRequest) {
     try {
       const order = await this.db.transaction(async (trx) => {
-        const [topupWithGame] = await trx
+        //cari produk (takutnya produk goib)
+        const [availableProduct] = await trx
           .select({
             product: schemas.productsTable,
             gameName: schemas.games.name,
@@ -134,69 +169,84 @@ export class OrderRepository {
           )
           .limit(1);
 
-        if (!topupWithGame) {
+        //throw error kalo goib
+        if (!availableProduct) {
           throw new NotFoundException('No available topup option');
         }
 
-        const totalPrice = Number(topupWithGame.product.price) * quantity;
+        const totalPrice = Number(availableProduct.product.price) * quantity;
 
+        //buat order baru
         const [newOrder] = await trx
           .insert(schemas.ordersTable)
           .values({
             userId: userId,
             customerName: customerName,
             email: email,
-            productIds: topupWithGame.product.productId,
-            value: topupWithGame.product.value,
+            value: availableProduct.product.value,
             priceTotal: String(totalPrice),
-            type: topupWithGame.product.type,
+            type: availableProduct.product.type,
             status: 'pending',
             target: target,
-            quantity: String(quantity),
-            gameName: topupWithGame.gameName,
+            gameName: availableProduct.gameName,
           })
           .returning();
 
-        return newOrder;
+        // insert ke junction table
+        const orderProducts = await trx
+          .insert(schemas.orderProductsTable)
+          .values({
+            orderId: newOrder.orderId,
+            productId: availableProduct.product.productId,
+            quantity: quantity,
+          })
+          .returning();
+
+        //casting
+        const order: Order = {
+          ...newOrder,
+          priceTotal: Number(newOrder.priceTotal),
+          value: Number(newOrder.value),
+          productsOrder: orderProducts,
+          quantity: orderProducts.reduce((sum, item) => sum + item.quantity, 0),
+        };
+
+        return order;
       });
 
-      return {
-        ...order,
-        value: Number(order.value),
-        priceTotal: Number(order.priceTotal),
-        quantity: Number(order.quantity),
-      };
+      return order;
     } catch (error) {
       console.error('Error creating quick order:', error);
 
       if (error instanceof NotFoundException) throw error;
-
       throw new InternalServerErrorException(
         'Failed to create order, please try again later',
       );
     }
   }
 
-  async fallbackDeleteOrder(
-    orderId: string,
-    voucherIds: string[],
-    type: 'topup' | 'voucher',
-  ) {
+  async fallbackDeleteOrder(orderId: string, type: 'voucher' | 'topup') {
     try {
       await this.db.transaction(async (trx) => {
+        // ambil products id
+        const products = await trx
+          .select({ productId: schemas.orderProductsTable.productId })
+          .from(schemas.orderProductsTable)
+          .where(eq(schemas.orderProductsTable.orderId, orderId));
+
+        //map jadi array
+        const productIds = products.map((v) => v.productId);
+
+        if (productIds.length > 0 && type === 'voucher') {
+          await trx
+            .update(schemas.productsTable)
+            .set({ status: 'available' })
+            .where(inArray(schemas.productsTable.productId, productIds));
+        }
+
         await trx
           .delete(schemas.ordersTable)
           .where(eq(schemas.ordersTable.orderId, orderId));
-
-        if (type === 'voucher') {
-          await trx
-            .update(schemas.productsTable)
-            .set({
-              status: 'available',
-              updatedAt: new Date(),
-            })
-            .where(inArray(schemas.productsTable.productId, voucherIds));
-        }
       });
     } catch (error) {
       console.error('Error deleting order:', error);
@@ -205,7 +255,8 @@ export class OrderRepository {
 
   async getOrdersByUser(userId: string) {
     try {
-      const orders = await this.db
+      // Get orders with payments
+      const ordersWithPayments = await this.db
         .select({
           orderId: schemas.ordersTable.orderId,
           target: schemas.ordersTable.target,
@@ -215,56 +266,41 @@ export class OrderRepository {
           value: schemas.ordersTable.value,
           type: schemas.ordersTable.type,
           gameName: schemas.ordersTable.gameName,
-          quantity: schemas.ordersTable.quantity,
-          redirectLink: schemas.paymentsTable.paymentLink,
+          paymentLink: schemas.paymentsTable.paymentLink,
+          quantity: sum(schemas.orderProductsTable.quantity),
         })
         .from(schemas.ordersTable)
         .leftJoin(
           schemas.paymentsTable,
           eq(schemas.ordersTable.orderId, schemas.paymentsTable.orderId),
         )
+        .leftJoin(
+          schemas.orderProductsTable,
+          eq(schemas.ordersTable.orderId, schemas.orderProductsTable.orderId),
+        )
+        .groupBy(
+          schemas.ordersTable.orderId,
+          schemas.ordersTable.target,
+          schemas.ordersTable.status,
+          schemas.ordersTable.createdAt,
+          schemas.ordersTable.priceTotal,
+          schemas.ordersTable.value,
+          schemas.ordersTable.type,
+          schemas.ordersTable.gameName,
+          schemas.paymentsTable.paymentLink,
+        )
         .where(eq(schemas.ordersTable.userId, userId))
         .orderBy(desc(schemas.ordersTable.createdAt));
 
-      const now = new Date();
-      const expiredOrders: string[] = [];
+      //casting
+      const data: GetOrderData[] = ordersWithPayments.map((v) => ({
+        ...v,
+        quantity: Number(v.quantity),
+        priceTotal: Number(v.priceTotal),
+        value: Number(v.value),
+      }));
 
-      const processedOrders = orders.map((order) => {
-        const orderAge = now.getTime() - new Date(order.createdAt).getTime();
-        const isExpired = orderAge > 24 * 60 * 60 * 1000;
-
-        if (order.status === 'pending' && isExpired) {
-          expiredOrders.push(order.orderId);
-          return {
-            ...order,
-            status: 'failed',
-            value: Number(order.value),
-            priceTotal: Number(order.priceTotal),
-            quantity: Number(order.quantity),
-          };
-        }
-
-        return {
-          ...order,
-          value: Number(order.value),
-          priceTotal: Number(order.priceTotal),
-          quantity: Number(order.quantity),
-        };
-      });
-
-      if (expiredOrders.length > 0) {
-        await this.db
-          .update(schemas.ordersTable)
-          .set({ status: 'failed' })
-          .where(
-            and(
-              inArray(schemas.ordersTable.orderId, expiredOrders),
-              eq(schemas.ordersTable.status, 'pending'),
-            ),
-          );
-      }
-
-      return processedOrders;
+      return data;
     } catch (error) {
       console.error(error);
       throw new InternalServerErrorException('Failed to fetch orders');
@@ -273,9 +309,41 @@ export class OrderRepository {
 
   async getOrderDetails(orderId: string, userId: string) {
     try {
+      //ambil singular order
       const [orderResult] = await this.db
-        .select()
+        .select({
+          orderId: schemas.ordersTable.orderId,
+          userId: schemas.ordersTable.userId,
+          target: schemas.ordersTable.target,
+          status: schemas.ordersTable.status,
+          createdAt: schemas.ordersTable.createdAt,
+          priceTotal: schemas.ordersTable.priceTotal,
+          value: schemas.ordersTable.value,
+          type: schemas.ordersTable.type,
+          gameName: schemas.ordersTable.gameName,
+          paymentLink: schemas.paymentsTable.paymentLink,
+          quantity: sum(schemas.orderProductsTable.quantity),
+        })
         .from(schemas.ordersTable)
+        .leftJoin(
+          schemas.paymentsTable,
+          eq(schemas.ordersTable.orderId, schemas.paymentsTable.orderId),
+        )
+        .leftJoin(
+          schemas.orderProductsTable,
+          eq(schemas.ordersTable.orderId, schemas.orderProductsTable.orderId),
+        )
+        .groupBy(
+          schemas.ordersTable.orderId,
+          schemas.ordersTable.target,
+          schemas.ordersTable.status,
+          schemas.ordersTable.createdAt,
+          schemas.ordersTable.priceTotal,
+          schemas.ordersTable.value,
+          schemas.ordersTable.type,
+          schemas.ordersTable.gameName,
+          schemas.paymentsTable.paymentLink,
+        )
         .where(
           and(
             eq(schemas.ordersTable.orderId, orderId),
@@ -287,86 +355,40 @@ export class OrderRepository {
         throw new NotFoundException('Order not found');
       }
 
-      let productIds;
-
-      if (orderResult.type === 'topup') {
-        productIds = [orderResult.productIds];
-      } else {
-        try {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          productIds = JSON.parse(orderResult.productIds);
-        } catch (e) {
-          console.error('Invalid productIds JSON:', e);
-          productIds = [];
-        }
-      }
-
-      const [result] = await this.db
+      //ambil codes
+      const codes = await this.db
         .select({
-          orderId: schemas.ordersTable.orderId,
-          userId: schemas.ordersTable.userId,
-          target: schemas.ordersTable.target,
-          status: schemas.ordersTable.status,
-          createdAt: schemas.ordersTable.createdAt,
-          priceTotal: schemas.ordersTable.priceTotal,
-          value: schemas.ordersTable.value,
-          type: schemas.ordersTable.type,
-          gameName: schemas.ordersTable.gameName,
-          quantity: schemas.ordersTable.quantity,
-          paymentLink: schemas.paymentsTable.paymentLink,
-          voucherCodes: sql<string[]>`array_agg(${schemas.productsTable.code})`,
+          orderId: schemas.orderProductsTable.orderId,
+          codes: schemas.productsTable.code,
         })
-        .from(schemas.ordersTable)
-        .leftJoin(
-          schemas.paymentsTable,
-          eq(schemas.ordersTable.orderId, schemas.paymentsTable.orderId),
-        )
+        .from(schemas.orderProductsTable)
         .leftJoin(
           schemas.productsTable,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-          inArray(schemas.productsTable.productId, productIds),
+          eq(
+            schemas.orderProductsTable.productId,
+            schemas.productsTable.productId,
+          ),
         )
-        .where(eq(schemas.ordersTable.orderId, orderId))
-        .groupBy(
-          schemas.ordersTable.orderId,
-          schemas.paymentsTable.paymentLink,
-        );
-
-      if (!result) {
-        throw new NotFoundException('Order not found');
-      }
+        .where(eq(schemas.orderProductsTable.orderId, orderResult.orderId));
 
       const baseResult = {
-        ...result,
-        priceTotal: Number(result.priceTotal),
-        value: Number(result.value),
-        quantity: Number(result.quantity),
+        ...orderResult,
+        priceTotal: Number(orderResult.priceTotal),
+        value: Number(orderResult.value),
+        quantity: Number(orderResult.quantity),
       };
 
-      const { voucherCodes, ...rest } = baseResult;
+      const voucherCodes =
+        orderResult.type === 'voucher'
+          ? codes.map((c) => c.codes).filter((code) => code !== null) // left join makanya perlu null check
+          : null;
 
-      if (baseResult.type === 'voucher' && baseResult.status === 'completed') {
-        return {
-          ...rest,
-          paymentLink:
-            result.status === 'completed' ||
-            result.status === 'processed' ||
-            result.status === 'cancelled'
-              ? null
-              : result.paymentLink,
-          voucherCodes,
-        };
-      }
-
-      return {
-        ...rest,
-        paymentLink:
-          result.status === 'completed' ||
-          result.status === 'processed' ||
-          result.status === 'cancelled'
-            ? null
-            : result.paymentLink,
+      const finalResult: GetOrderDetails = {
+        ...baseResult,
+        voucherCode: voucherCodes,
       };
+
+      return finalResult;
     } catch (error) {
       console.error(error);
       if (error instanceof NotFoundException) {
@@ -393,13 +415,12 @@ export class OrderRepository {
         throw new NotFoundException('Order not found');
       }
 
-      const { value, priceTotal, quantity } = updatedOrder;
+      const { value, priceTotal } = updatedOrder;
 
       const convertedOrder = {
         ...updatedOrder,
         value: Number(value),
         priceTotal: Number(priceTotal),
-        quantity: Number(quantity),
       };
 
       return convertedOrder;
@@ -420,30 +441,56 @@ export class OrderRepository {
     }
   }
 
-  async cancelOder(orderId: string) {
+  async cancelOder(orderId: string, userId: string) {
     try {
-      const [result] = await this.db
-        .update(schemas.ordersTable)
-        .set({ status: 'cancelled' })
-        .where(eq(schemas.ordersTable.orderId, orderId))
-        .returning();
+      const result = await this.db.transaction(async (trx) => {
+        const [result] = await trx
+          .update(schemas.ordersTable)
+          .set({ status: 'cancelled' })
+          .where(
+            and(
+              eq(schemas.ordersTable.orderId, orderId),
+              eq(schemas.ordersTable.userId, userId),
+              //avoid canceling completed order
+              inArray(schemas.ordersTable.status, ['pending', 'processed']),
+            ),
+          )
+          .returning();
 
-      console.log(result);
+        if (!result) {
+          throw new NotFoundException('Order not found or cannot be cancelled');
+        }
+
+        const productsToRecover = await trx
+          .select({
+            productId: schemas.orderProductsTable.productId,
+          })
+          .from(schemas.orderProductsTable)
+          .where(eq(schemas.orderProductsTable.orderId, result.orderId));
+
+        const productIds = productsToRecover.map((v) => v.productId);
+
+        if (productIds.length > 0 && result.type === 'voucher') {
+          await trx
+            .update(schemas.productsTable)
+            .set({ status: 'available' })
+            .where(inArray(schemas.productsTable.productId, productIds));
+        }
+
+        return result;
+      });
 
       if (!result) {
         throw new NotFoundException('Orders not found');
       }
 
-      const { value, quantity, priceTotal } = result;
-
-      const convertedResult = {
+      const castedResult = {
         ...result,
-        value: Number(value),
-        quantity: Number(quantity),
-        priceTotal: Number(priceTotal),
+        priceTotal: Number(result.priceTotal),
+        value: Number(result.value),
       };
 
-      return convertedResult;
+      return castedResult;
     } catch (error) {
       console.error(error);
       if (error instanceof NotFoundException) {
@@ -462,15 +509,42 @@ export class OrderRepository {
         .select({
           ...getTableColumns(schemas.ordersTable),
           paymentStatus: schemas.paymentsTable.status,
+          paymentMethod: schemas.paymentsTable.paymentMethod,
+          paymentLink: schemas.paymentsTable.paymentLink,
+          paidAt: schemas.paymentsTable.paidAt,
+          quantity: sum(schemas.orderProductsTable.quantity).as(
+            'total_quantity',
+          ),
         })
         .from(schemas.ordersTable)
         .leftJoin(
           schemas.paymentsTable,
           eq(schemas.ordersTable.orderId, schemas.paymentsTable.orderId),
         )
+        .leftJoin(
+          schemas.orderProductsTable,
+          eq(schemas.ordersTable.orderId, schemas.orderProductsTable.orderId),
+        )
+        .groupBy(
+          schemas.ordersTable.orderId,
+          schemas.ordersTable.userId,
+          schemas.ordersTable.target,
+          schemas.ordersTable.status,
+          schemas.ordersTable.priceTotal,
+          schemas.ordersTable.value,
+          schemas.ordersTable.type,
+          schemas.ordersTable.gameName,
+          schemas.ordersTable.customerName,
+          schemas.ordersTable.email,
+          schemas.ordersTable.createdAt,
+          schemas.paymentsTable.status,
+          schemas.paymentsTable.paymentMethod,
+          schemas.paymentsTable.paymentLink,
+          schemas.paymentsTable.paidAt,
+        )
+        .orderBy(desc(schemas.ordersTable.createdAt))
         .limit(limit)
-        .offset(offset)
-        .orderBy(desc(schemas.ordersTable.createdAt));
+        .offset(offset);
 
       return orders.map((order) => ({
         ...order,
