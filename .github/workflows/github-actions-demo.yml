@@ -25,13 +25,13 @@ jobs:
       - name: adding tags to image #nambah tag ke image
         run: | # tag untuk ghcr dan gcr
           docker tag subply-api:latest gcr.io/gcr-160603/subply-api:latest
-          docker tag subply-api:latest ghcr.io/vhysxl/subply-api:latest
+          docker tag subply-api:latest ghcr.io/${{github.actor}}/subply-api:latest
 
       - name: login ghcr # loginkan ghcr le
         run: echo ${{secrets.GITHUB_TOKEN}} | docker login ghcr.io -u ${{github.actor}} --password-stdin
 
       - name: push to ghcr
         run: |
-          docker push ghcr.io/vhysxl/subply-api:latest
+          docker push ghcr.io/${{github.actor}}/subply-api:latest
 
       #todo : gcp (gae)
