@@ -96,7 +96,7 @@ Ensure your .env file is properly configured before running.
 
 Option 2: Pull from GitHub Container Registry
 ```
-$ docker pull ghcr.io/vhysxl/subply-server:latest
+$ docker pull ghcr.io/vhysxl/subply-api:latest
 ```
 Replace any necessary port or environment settings based on your environment.
 
