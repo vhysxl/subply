@@ -8,9 +8,10 @@ jobs:
   subply-deploy:
     runs-on: ubuntu-latest #os yang dipakai gh actions
 
-    permissions: #izin yang diberikan ke actions
-      contents: 'read'
-      id-token: 'write'
+    permissions:
+      contents: read
+      id-token: write
+      packages: write   # ⬅️ wajib untuk push image ke GHCR
 
     steps:
       - uses: actions/checkout@v4 #tool untuk clone current repo
