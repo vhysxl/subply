@@ -7,6 +7,11 @@ on:
 jobs:
   subply-deploy:
     runs-on: ubuntu-latest #os yang dipakai gh actions
+
+    permissions: #izin yang diberikan ke actions
+      contents: 'read'
+      id-token: 'write'
+
     steps:
       - uses: actions/checkout@v4 #tool untuk clone current repo
 
@@ -29,19 +34,23 @@ jobs:
       - name: login ghcr # loginkan ghcr le
         run: echo ${{secrets.GITHUB_TOKEN}} | docker login ghcr.io -u ${{github.actor}} --password-stdin
 
-      - name: push to ghcr
+      - name: push to ghcr # push image ke github container registry
         run: |
           docker push ghcr.io/${{github.actor}}/subply-api:latest
 
-      - uses: 'google-github-actions/auth@v2'
-        with:
-          workload_identity_provider: 'projects/591941627936/locations/global/workloadIdentityPools/github-actions-subply/providers/github-provider'
+      - uses: 'google-github-actions/auth@v2' # tool untuk autentikasi ke gcp
+        with: # gunakan workload identity ama service account
+          workload_identity_provider: 'projects/591941627936/locations/global/workloadIdentityPools/github-actions-subply/providers/github-provider' 
           service_account: 'github-actions-subply@modified-fabric-379312.iam.gserviceaccount.com'
 
-      - id: 'deploy'
-        uses: 'google-github-actions/deploy-cloudrun@v2'
+      - id: 'deploy' 
+        uses: 'google-github-actions/deploy-cloudrun@v2' # tool untuk deploy ke cloud run
         with:
-          service: 'subply-deploy'
-          image: 'ghcr.io/${{ github.actor }}/subply-api:latest'
-          region: 'asia-southeast2'
-          project: 'modified-fabric-379312'
+          service: 'subply-deploy' # nama service cloud run
+          image: 'ghcr.io/${{ github.actor }}/subply-api:latest' # image yang mau di deploy
+          region: 'asia-southeast2' # region cloud run
+          project: 'modified-fabric-379312' # project id gcp
+
+      - name: 'Check response code' # cek apakah deploy berhasil
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.url }}"
