@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-      packages: write   # ⬅️ wajib untuk push image ke GHCR
+      packages: write   #izin yang dibutuhkan
 
     steps:
       - uses: actions/checkout@v4 #tool untuk clone current repo
@@ -55,3 +55,6 @@ jobs:
       - name: 'Check response code' # cek apakah deploy berhasil
         run: |
           curl -s -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.url }}"
+
+
+
