@@ -30,13 +30,15 @@ This project is designed with clean architecture and follows a controller → se
 
 ## 🔧 Tech Stack
 
-- Framework: NestJS
-- ORM: Drizzle ORM
-- Database: PostgreSQL (NeonDB)
-- Container: Docker 
-- Payment Gateway: Midtrans
-- Hosting: GCP (planned)
-- Media Storage: Cloudinary
+- **Framework**: NestJS  
+- **ORM**: Drizzle ORM  
+- **Database**: PostgreSQL (via NeonDB)  
+- **Containerization**: Docker  
+- **Payment Gateway**: Midtrans  
+- **Deployment**: Google Cloud Run  
+- **Media Storage**: Cloudinary  
+- **CI/CD**: GitHub Actions  
+
 
 
 ## 🔐 Features
