@@ -89,7 +89,6 @@ jobs:
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             MIDTRANS_SERVER_KEY=${{ secrets.MIDTRANS_SERVER_KEY }}
-            PORT=8080
 
       - name: 'Check response code' # cek apakah deploy berhasil
         if: steps.check.outputs.deploy == 'true' 
