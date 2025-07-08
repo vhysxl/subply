@@ -41,20 +41,39 @@ jobs:
 
       - uses: 'google-github-actions/auth@v2' # tool untuk autentikasi ke gcp
         with: # gunakan workload identity ama service account
-          workload_identity_provider: 'projects/591941627936/locations/global/workloadIdentityPools/github-actions-subply/providers/github-provider' 
+          workload_identity_provider: 'projects/591941627936/locations/global/workloadIdentityPools/github-actions-subply/providers/github-actions' 
           service_account: 'github-actions-subply@modified-fabric-379312.iam.gserviceaccount.com'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2' # tool untuk setup gcloud cli
+
+      - name: "Use gcloud CLI"
+        run: "gcloud info"
+
+      - name: "Docker auth"
+        run: | # autentikasi docker ke gcr
+          gcloud auth configure-docker asia-southeast2-docker.pkg.dev --quiet
+
+      - name: "push to gar" # push image ke google artifact registry (gar)
+        run: | #tambah tag ke image dan push ke gar
+          docker tag ghcr.io/${{github.actor}}/subply-api:latest asia-southeast2-docker.pkg.dev/modified-fabric-379312/subply/subply-api:latest
+          docker push asia-southeast2-docker.pkg.dev/modified-fabric-379312/subply/subply-api:latest 
 
       - id: 'deploy' 
         uses: 'google-github-actions/deploy-cloudrun@v2' # tool untuk deploy ke cloud run
         with:
           service: 'subply-deploy' # nama service cloud run
-          image: 'ghcr.io/${{ github.actor }}/subply-api:latest' # image yang mau di deploy
+          image: 'asia-southeast2-docker.pkg.dev/modified-fabric-379312/subply/subply-api:latest' # image yang mau di deploy
           region: 'asia-southeast2' # region cloud run
           project: 'modified-fabric-379312' # project id gcp
+          env_vars: | # variabel lingkungan yang mau di set
+            CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }}
+            CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }}
+            CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            MIDTRANS_SERVER_KEY=${{ secrets.MIDTRANS_SERVER_KEY }}
 
       - name: 'Check response code' # cek apakah deploy berhasil
         run: |
           curl -s -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.url }}"
-
-
-

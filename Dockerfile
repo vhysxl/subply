@@ -13,8 +13,12 @@ RUN npm install
 # copy all files
 COPY . .
 
+# Build the app
+RUN npm run build
+
 # Expose port
-EXPOSE 5000
+ENV PORT=8080
+EXPOSE 8080
 
 #run the app
-CMD ["npm", "run", "start"]
+CMD ["node", "dist/src/main.js"]
