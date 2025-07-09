@@ -17,18 +17,19 @@ This project is designed with clean architecture and follows a controller → se
 
 ## 🔧 Tech Stack
 
-- **Framework**: NestJS  
-- **ORM**: Drizzle ORM  
-- **Database**: PostgreSQL (via NeonDB)  
-- **Containerization**: Docker  
-- **Payment Gateway**: Midtrans  
-- **Deployment**: Google Cloud Run  
-- **Media Storage**: Cloudinary  
-- **CI/CD**: GitHub Actions  
+- **Framework**: NestJS
+- **ORM**: Drizzle ORM
+- **Database**: PostgreSQL (via NeonDB)
+- **Containerization**: Docker
+- **Payment Gateway**: Midtrans
+- **Deployment**: Google Cloud Run
+- **Media Storage**: Cloudinary
+- **CI/CD**: GitHub Actions
 - **Container Registry**: GHCR & GAR (Google Artifact Registry)
 
 ## 🔐 Features
 
+- Middlewares (apiMiddlewares, Midtrans)
 - Role-based Authentication (User, Admin, Superadmin)
 - Midtrans Payment Integration
 - Audit Logging System
@@ -116,13 +117,12 @@ $ npm run start:prod
 
 ## API Docs
 
-Swagger UI: https://subply-deploy-591941627936.asia-southeast2.run.app/api  
+Swagger UI: https://subply-deploy-591941627936.asia-southeast2.run.app/api
 
 ## TODO
 
 - Expand test coverage to all core services (currently partial)
-- Implement Middleware
-- Swagger docs 
+- Swagger docs
 
 ## License
 
