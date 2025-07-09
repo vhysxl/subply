@@ -22,6 +22,7 @@ import { StatisticsModule } from './statistics/statistics.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ApiKeyMiddleware } from './common/middleware/api.middleware';
+import { MidtransMiddleware } from './common/middleware/midtrans.middleware';
 
 @Module({
   imports: [
@@ -62,6 +63,13 @@ import { ApiKeyMiddleware } from './common/middleware/api.middleware';
 export class AppModule implements NestModule {
   //pasang middleware
   configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(MidtransMiddleware)
+      .forRoutes(
+        { path: 'payments/status', method: RequestMethod.POST },
+        { path: '/payments/status', method: RequestMethod.POST },
+      );
+
     consumer
       .apply(ApiKeyMiddleware)
       .exclude(

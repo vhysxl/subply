@@ -11,10 +11,6 @@ export class ApiKeyMiddleware implements NestMiddleware {
     const apiKey = req.headers['api-key'] || req.headers['x-api-key'];
     const validApiKey = process.env.API_KEY;
 
-    console.log(`incoming apiKey: `, apiKey);
-
-    console.log('expected apiKey: ', validApiKey);
-
     if (!validApiKey) {
       console.warn('Warning: API_KEY not set in env!');
     }
