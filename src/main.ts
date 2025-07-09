@@ -12,7 +12,7 @@ async function bootstrap() {
   ); //bikin validasi jalan (DTO)
 
   const host = process.env.HOST || '0.0.0.0';
-  const port = process.env.PORT || 5000; //jalan di port 5000
+  const port = process.env.PORT || 8080; //jalan di port 8080
 
   const config = new DocumentBuilder()
     .setTitle('Subply API example')

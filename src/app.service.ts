@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class AppService {
   getHello(): string {
-    return 'Subply Online 👌';
+    const message = 'Subply API is online! 👌'
+    return message; 
   }
 }
