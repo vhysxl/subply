@@ -109,6 +109,16 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## API Docs
+
+Swagger UI: https://subply-deploy-591941627936.asia-southeast2.run.app/api  
+
+## TODO
+
+- Expand test coverage to all core services (currently partial)
+- Implement Middleware
+- Swagger docs 
+
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
