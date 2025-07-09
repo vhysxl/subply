@@ -23,10 +23,11 @@ export class StatisticsRepository {
         .select({
           gameName: schemas.ordersTable.gameName,
           totalOrders: sql`COUNT(*)`,
-          totalRevenue: sql`COALESCE(SUM(price_total), 0)`,
-          totalQuantity: sql`COALESCE(SUM(quantity), 0)`,
+          totalRevenue: sql`COALESCE(SUM(${schemas.ordersTable.priceTotal}), 0)`,
+          totalQuantity: sql`COALESCE(SUM(${schemas.orderProductsTable.quantity}), 0)`,
         })
-        .from(schemas.ordersTable)
+        .from(schemas.ordersTable).innerJoin(schemas.orderProductsTable, 
+          eq(schemas.ordersTable.orderId, schemas.orderProductsTable.orderId))
         .where(
           and(
             eq(schemas.ordersTable.status, 'completed'),
@@ -35,7 +36,7 @@ export class StatisticsRepository {
           ),
         )
         .groupBy(schemas.ordersTable.gameName)
-        .orderBy(sql`SUM(price_total) DESC`);
+        .orderBy(sql`SUM(${schemas.ordersTable.priceTotal}) DESC`);
 
       const typeBreakdown = await this.db
         .select({
