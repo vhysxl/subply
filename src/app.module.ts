@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductsModule } from './products/products.module';
@@ -16,11 +16,12 @@ import { AuditLogModule } from './audit-log/audit-log.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { ApiKeyMiddleware } from './common/middleware/api.middleware';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: '.env.dev', //ganti ke prod
+      envFilePath: '.env', //ganti ke prod
       isGlobal: true,
     }),
     AuthModule,
@@ -53,4 +54,9 @@ import { APP_GUARD } from '@nestjs/core';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  //pasang middleware
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(ApiKeyMiddleware).forRoutes('*');
+  }
+}

@@ -33,11 +33,12 @@ This project is designed with clean architecture and follows a controller → se
 - Framework: NestJS
 - ORM: Drizzle ORM
 - Database: PostgreSQL (NeonDB)
-- Container: Docker 
+- Container: Docker
 - Payment Gateway: Midtrans
 - Hosting: GCP (planned)
 - Media Storage: Cloudinary
-
+- CI/CD : GitHub Actions
+- ImageRegistry: GitHub Container Registry (GHCR)
 
 ## 🔐 Features
 
@@ -50,6 +51,7 @@ This project is designed with clean architecture and follows a controller → se
 - E-commerce flow (without cart system)
 
 ## 📁 Project Structure (src/)
+
 ```
 src/
 ├── auth/                     # Auth logic (JWT, Guards)
@@ -68,6 +70,7 @@ src/
 ```
 
 ## ⚠️ Environment Variables Required
+
 This API will not run without a valid .env file.
 Please create a .env file in the project root with the following variables:
 
@@ -88,18 +91,22 @@ CLOUDINARY_CLOUD_NAME="your_cloud_name"
 ```
 
 ## 🐳 Run with Docker
+
 Option 1: Using Docker Compose
+
 ```
 $ docker compose up
 ```
+
 Ensure your .env file is properly configured before running.
 
 Option 2: Pull from GitHub Container Registry
+
 ```
 $ docker pull ghcr.io/vhysxl/subply-api:latest
 ```
-Replace any necessary port or environment settings based on your environment.
 
+Replace any necessary port or environment settings based on your environment.
 
 ## 🚀 Project setup
 
