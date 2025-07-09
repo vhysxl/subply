@@ -1,4 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ProductsModule } from './products/products.module';
@@ -57,6 +62,12 @@ import { ApiKeyMiddleware } from './common/middleware/api.middleware';
 export class AppModule implements NestModule {
   //pasang middleware
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(ApiKeyMiddleware).forRoutes('*');
+    consumer
+      .apply(ApiKeyMiddleware)
+      .exclude(
+        { path: 'payments/status', method: RequestMethod.POST },
+        { path: '/payments/status', method: RequestMethod.POST },
+      ) //exclude payment buat midtrans
+      .forRoutes('*');
   }
 }
